@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "study_hub_reservation_system", "study_hub_reservation_system.csproj", "{7EB556F8-CB0A-482E-B3F1-CFBD6FF4DE58}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EB556F8-CB0A-482E-B3F1-CFBD6FF4DE58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7EB556F8-CB0A-482E-B3F1-CFBD6FF4DE58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7EB556F8-CB0A-482E-B3F1-CFBD6FF4DE58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7EB556F8-CB0A-482E-B3F1-CFBD6FF4DE58}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
