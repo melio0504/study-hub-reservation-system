@@ -215,5 +215,20 @@ public partial class MainWindow : Window
 
 	}
 
+	private sealed class SeatPlacement
+	{
+		public SeatPlacement(string seatId, double left, double top, decimal hourlyRate)
+		{
+			SeatId = seatId;
+			Left = left;
+			Top = top;
+			HourlyRate = hourlyRate;
+		}
+
+		public string SeatId { get; }
+		public double Left { get; }
+		public double Top { get; }
+		public decimal HourlyRate { get; }
+	}
 	}
 }
