@@ -604,5 +604,122 @@ public partial class MainWindow : Window
 			.OrderBy(seatId => seatId)
 			.ToList();
 	}
+
+	private async Task<PaymentDetails?> ShowPaymentDialogAsync(decimal totalAmount)
+	{
+		var paymentMethodComboBox = new ComboBox
+		{
+			ItemsSource = new List<string> { "Credit Card", "GCash", "Maya" },
+			SelectedIndex = 0,
+			Width = 280
+		};
+
+		var accountNameTextBox = new TextBox
+		{
+			Watermark = "Account Name",
+			Width = 280
+		};
+
+		var accountNumberTextBox = new TextBox
+		{
+			Watermark = "Card Number (16 digits)",
+			Width = 280
+		};
+
+		var secondaryDetailTextBox = new TextBox
+		{
+			Watermark = "CVV (3 digits)",
+			Width = 280
+		};
+
+		var errorTextBlock = new TextBlock
+		{
+			Foreground = ErrorBrush,
+			TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+			Width = 280
+		};
+
+		paymentMethodComboBox.SelectionChanged += (_, _) =>
+		{
+			if (paymentMethodComboBox.SelectedItem is not string selectedMethod)
+			{
+				return;
+			}
+
+			if (selectedMethod == "Credit Card")
+			{
+				accountNumberTextBox.Watermark = "Card Number (13-19 digits)";
+				secondaryDetailTextBox.Watermark = "CVV (3-4 digits)";
+			}
+			else
+			{
+				accountNumberTextBox.Watermark = "Mobile Number";
+				secondaryDetailTextBox.Watermark = "Reference Number (optional)";
+			}
+
+			errorTextBlock.Text = string.Empty;
+		};
+
+		var payButton = new Button
+		{
+			Content = "Pay Now",
+			Background = new SolidColorBrush(Color.Parse("#0A84FF")),
+			Foreground = Brushes.White,
+			BorderBrush = new SolidColorBrush(Color.Parse("#0A84FF")),
+			Padding = new Thickness(16, 10)
+		};
+
+		var cancelButton = new Button
+		{
+			Content = "Cancel",
+			Padding = new Thickness(16, 10)
+		};
+
+		var dialog = new Window
+		{
+			Title = "Payment",
+			Width = 420,
+			Height = 420,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+			Content = new Border
+			{
+				Padding = new Thickness(20),
+				Child = new StackPanel
+				{
+					Spacing = 10,
+					Children =
+					{
+						new TextBlock
+						{
+							Text = "Complete Payment",
+							FontSize = 22,
+							FontWeight = FontWeight.Bold
+						},
+						new TextBlock
+						{
+							Text = $"Total Amount: PHP {totalAmount:F2}",
+							FontWeight = FontWeight.SemiBold
+						},
+						new TextBlock { Text = "Payment Method" },
+						paymentMethodComboBox,
+						new TextBlock { Text = "Account Name" },
+						accountNameTextBox,
+						new TextBlock { Text = "Account Number" },
+						accountNumberTextBox,
+						secondaryDetailTextBox,
+						errorTextBlock,
+						new StackPanel
+						{
+							Orientation = Avalonia.Layout.Orientation.Horizontal,
+							Spacing = 10,
+							HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+							Children = { cancelButton, payButton }
+						}
+					}
+				}
+			}
+		};
+
 	}
 }
