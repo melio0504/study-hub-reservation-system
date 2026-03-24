@@ -53,5 +53,18 @@ public partial class MainWindow : Window
 			_seatRates[seat.SeatId] = seat.HourlyRate;
 		}
 	}
+
+	private void InitializeReservationInputs()
+	{
+		ReservationDatePicker.SelectedDate = DateTimeOffset.Now.Date;
+
+		StartHourComboBox.ItemsSource = Enumerable.Range(OpeningHour, (LastStartHour - OpeningHour) + 1)
+			.Select(hour => $"{hour:00}:00")
+			.ToList();
+		StartHourComboBox.SelectedIndex = 0;
+
+		UpdateEndTimeOptions();
+
+	}
 	}
 }
