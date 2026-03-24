@@ -815,5 +815,46 @@ public partial class MainWindow : Window
 		return true;
 	}
 
+	private async Task ShowInfoDialogAsync(string title, string message)
+	{
+		var okButton = new Button
+		{
+			Content = "OK",
+			Padding = new Thickness(16, 10),
+			HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+		};
+
+		var dialog = new Window
+		{
+			Title = title,
+			Width = 420,
+			Height = 220,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+			Content = new Border
+			{
+				Padding = new Thickness(20),
+				Child = new StackPanel
+				{
+					Spacing = 14,
+					Children =
+					{
+						new TextBlock
+						{
+							Text = message,
+							TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+							HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+						},
+						okButton
+					}
+				}
+			}
+		};
+
+		okButton.Click += (_, _) => dialog.Close();
+
+		await dialog.ShowDialog(this);
+	}
+
 	}
 }
