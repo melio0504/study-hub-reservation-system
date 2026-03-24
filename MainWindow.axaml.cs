@@ -783,5 +783,37 @@ public partial class MainWindow : Window
 		return await completionSource.Task;
 	}
 
+	private static bool IsPaymentInputValid(string method, string accountNumber, string secondaryDetail, out string error)
+	{
+		error = string.Empty;
+		var numberDigits = new string(accountNumber.Where(char.IsDigit).ToArray());
+
+		if (method == "Credit Card")
+		{
+			if (numberDigits.Length < 13 || numberDigits.Length > 19)
+			{
+				error = "Card number must be between 13 and 19 digits.";
+				return false;
+			}
+
+			var cvvDigits = new string((secondaryDetail ?? string.Empty).Where(char.IsDigit).ToArray());
+			if (cvvDigits.Length < 3 || cvvDigits.Length > 4)
+			{
+				error = "CVV must be 3 or 4 digits.";
+				return false;
+			}
+
+			return true;
+		}
+
+		if (numberDigits.Length < 10 || numberDigits.Length > 13)
+		{
+			error = "Mobile number must be between 10 and 13 digits.";
+			return false;
+		}
+
+		return true;
+	}
+
 	}
 }
