@@ -918,5 +918,10 @@ public partial class MainWindow : Window
 		}
 	}
 
+	private DateOnly GetSelectedDate()
+	{
+		var selectedDate = ReservationDatePicker.SelectedDate?.DateTime.Date ?? DateTime.Today;
+		return DateOnly.FromDateTime(selectedDate);
+	}
 	}
 }
