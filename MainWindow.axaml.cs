@@ -928,5 +928,11 @@ public partial class MainWindow : Window
 	{
 		return _seatRates.GetValueOrDefault(seatId, ConvertUsdToPhp(3.00m));
 	}
+
+	private static decimal ConvertUsdToPhp(decimal usdAmount)
+	{
+		return Math.Round(usdAmount * UsdToPhpRate, 2);
+	}
+
 	}
 }
