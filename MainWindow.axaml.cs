@@ -503,5 +503,30 @@ public partial class MainWindow : Window
 		UpdateReservationList(reservations);
 		UpdateDetailPanel();
 	}
+
+	private void UpdateSeatButtons(IReadOnlyList<Reservation> dayReservations)
+	{
+		TryGetSelectedReservationSlot(out _, out var startHour, out _, out var durationHours);
+
+		foreach (var (seatId, button) in _seatButtons)
+		{
+			var hasConflict = dayReservations.Any(r =>
+				r.SeatId == seatId
+				&& TimesOverlap(r.StartHour, r.DurationHours, startHour, durationHours));
+
+			var background = hasConflict ? ReservedSeatBrush : AvailableSeatBrush;
+			var foreground = SeatTextBrush;
+
+			if (_selectedSeats.Contains(seatId))
+			{
+				background = SelectedSeatBrush;
+				foreground = SelectedSeatTextBrush;
+			}
+
+			button.Background = background;
+			button.Foreground = foreground;
+		}
+	}
+
 	}
 }
