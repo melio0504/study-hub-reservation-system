@@ -101,5 +101,98 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <Grid Grid.Row="1">
+            <Grid ColumnDefinitions="15*,70*,15*" VerticalAlignment="Center">
+                <Border Name="AuthPanel"
+                        Grid.Column="1"
+                        Classes="card"
+                        MinHeight="520"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        ClipToBounds="True">
+                    <Grid ColumnDefinitions="1.1*,1*">
+                    <Grid Grid.Column="0">
+                           <Image Source="avares://study_hub_reservation_system/Assets/login-image.png"
+                               Stretch="UniformToFill" />
+                        <Border Background="#66000000" />
+                        <StackPanel VerticalAlignment="Bottom" Margin="24" Spacing="6">
+                            <TextBlock Text="JIT Study Hub"
+                                       Foreground="White"
+                                       FontSize="38"
+                                       FontWeight="Bold" />
+                            <TextBlock Text="Reserve your ideal workspace in seconds."
+                                       Foreground="#F2F2F7"
+                                       FontSize="18"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Grid.Column="1" Padding="24" Background="#FFFFFF">
+                        <StackPanel Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="Reserve your Seat Here" Classes="heading" HorizontalAlignment="Center" />
+                            <TextBlock Text="Do you want a perfect place to make you more focus and locked in? You found it!"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"
+                                       Opacity="0.8"
+                                       Margin="20,0,20,12" />
+
+                            <TabControl HorizontalAlignment="Center" Width="360">
+                                <TabItem Header="Log In">
+                                    <StackPanel Margin="0,12,0,0" Spacing="6">
+                                        <TextBlock Text="Username" Classes="label" />
+                                        <TextBox Name="LoginUsernameTextBox" Watermark="Enter username" />
+
+                                        <TextBlock Text="Password" Classes="label" />
+                                        <TextBox Name="LoginPasswordTextBox" PasswordChar="*" Watermark="Enter password" />
+
+                                        <Button Content="Log In"
+                                            Classes="primary"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Center"
+                                            Click="LoginButton_Click" />
+
+                                        <TextBlock Name="LoginMessageTextBlock"
+                                                   Margin="0,10,0,0"
+                                                   Foreground="#FF3B30"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </TabItem>
+
+                                <TabItem Header="Sign Up">
+                                    <StackPanel Margin="0,12,0,0" Spacing="6">
+                                        <TextBlock Text="Username" Classes="label" />
+                                        <TextBox Name="SignupUsernameTextBox" Watermark="Choose username" />
+
+                                        <TextBlock Text="Email Address" Classes="label" />
+                                        <TextBox Name="SignupEmailTextBox" Watermark="Enter your email" />
+
+                                        <TextBlock Text="Password" Classes="label" />
+                                        <TextBox Name="SignupPasswordTextBox" PasswordChar="*" Watermark="Choose password" />
+
+                                        <TextBlock Text="Confirm Password" Classes="label" />
+                                        <TextBox Name="SignupConfirmPasswordTextBox" PasswordChar="*" Watermark="Confirm password" />
+
+                                        <Button Content="Create Account"
+                                            Classes="primary"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Center"
+                                            Click="SignupButton_Click" />
+
+                                        <TextBlock Name="SignupMessageTextBlock"
+                                                   Margin="0,10,0,0"
+                                                   Foreground="#FF3B30"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </TabItem>
+                            </TabControl>
+                        </StackPanel>
+                    </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
     </Grid>
 </Window>
