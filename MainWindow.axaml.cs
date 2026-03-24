@@ -394,5 +394,9 @@ public partial class MainWindow : Window
 		RefreshReservationViews();
 	}
 
+	private void ReservationDatePicker_SelectedDateChanged(object? sender, DatePickerSelectedValueChangedEventArgs e)
+	{
+		RefreshReservationViews();
+	}
 	}
 }
