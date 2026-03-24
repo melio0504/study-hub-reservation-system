@@ -336,5 +336,22 @@ public partial class MainWindow : Window
 		SignupMessageTextBlock.Text = string.Empty;
 		SignupMessageTextBlock.Foreground = ErrorBrush;
 	}
+
+	private static bool IsEmailAddressValid(string email)
+	{
+		if (string.IsNullOrWhiteSpace(email))
+		{
+			return false;
+		}
+
+		var atIndex = email.IndexOf('@');
+		if (atIndex <= 0 || atIndex != email.LastIndexOf('@'))
+		{
+			return false;
+		}
+
+		var dotAfterAt = email.IndexOf('.', atIndex + 2);
+		return dotAfterAt > atIndex + 1 && dotAfterAt < email.Length - 1;
+	}
 	}
 }
