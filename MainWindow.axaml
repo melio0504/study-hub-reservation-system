@@ -195,6 +195,57 @@
             </Grid>
 
             <Grid Name="BookingPanel" IsVisible="False" RowDefinitions="Auto,*">
+                <Border Grid.Row="0" Classes="card" Padding="12" CornerRadius="10" BorderThickness="1" Margin="0,0,0,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Name="WelcomeTextBlock"
+                                   VerticalAlignment="Center"
+                                   FontSize="20"
+                                   FontWeight="SemiBold" />
+                        <Button Grid.Column="1" Content="Log Out" Classes="secondary" Click="LogoutButton_Click" Foreground="White" Background="#800000"/>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1" ColumnDefinitions="1.9*,0.75*" ColumnSpacing="14">
+                    <Border Grid.Column="0" Classes="card" Padding="14" CornerRadius="10" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Seat Plan" Classes="heading" />
+                            <TextBlock Text="Click a seat to select it. Light gray seats are available, darker gray seats are reserved, and blue is your current selection."
+                                       Margin="0,4,0,12"
+                                       TextWrapping="Wrap" />
+
+                            <Border Background="#FBFBFD"
+                                    BorderBrush="#D2D2D7"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="8"
+                                    Margin="0,8,0,8">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto"
+                                                                                            Height="560">
+                                    <Canvas Name="SeatCanvas"
+                                                                                        Width="1700"
+                                                                                        Height="860"
+                                            Background="#FBFBFD" />
+                                </ScrollViewer>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,12,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="16" Height="16" Background="#E5E5EA" BorderBrush="#C7C7CC" BorderThickness="1" CornerRadius="3" />
+                                    <TextBlock Text="Available" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="16" Height="16" Background="#B0B0B7" CornerRadius="3" />
+                                    <TextBlock Text="Reserved" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="16" Height="16" Background="#0A84FF" CornerRadius="3" />
+                                    <TextBlock Text="Selected" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
             </Grid>
         </Grid>
     </Grid>
