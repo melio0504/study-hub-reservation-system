@@ -194,5 +194,8 @@
                 </Border>
             </Grid>
 
+            <Grid Name="BookingPanel" IsVisible="False" RowDefinitions="Auto,*">
+            </Grid>
+        </Grid>
     </Grid>
 </Window>
