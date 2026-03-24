@@ -185,5 +185,35 @@ public partial class MainWindow : Window
 		return seats;
 	}
 
+	private static void AddSeatBlock(
+		List<SeatPlacement> seats,
+		string prefix,
+		int startIndex,
+		double startX,
+		double startY,
+		int rows,
+		int columns,
+		decimal rate,
+		double columnStep = 58,
+		double rowStep = 58)
+	{
+		var index = startIndex;
+
+		for (var row = 0; row < rows; row++)
+		{
+			for (var col = 0; col < columns; col++)
+			{
+				var seatId = $"{prefix}{index:00}";
+				seats.Add(new SeatPlacement(
+					seatId,
+					startX + (col * columnStep),
+					startY + (row * rowStep),
+					rate));
+				index++;
+			}
+		}
+
+	}
+
 	}
 }
