@@ -856,5 +856,40 @@ public partial class MainWindow : Window
 		await dialog.ShowDialog(this);
 	}
 
+	private sealed record PaymentDetails(string Method, string AccountName, string AccountNumber, string SecondaryDetail);
+
+	private bool TryGetSelectedReservationSlot(out DateOnly date, out int startHour, out int endHour, out int durationHours)
+	{
+		date = GetSelectedDate();
+		startHour = OpeningHour;
+		endHour = OpeningHour + 1;
+		durationHours = 1;
+
+		if (StartHourComboBox.SelectedItem is not string startText
+			|| EndHourComboBox.SelectedItem is not string endText)
+		{
+			return false;
+		}
+
+		if (!int.TryParse(startText[..2], out startHour))
+		{
+			return false;
+		}
+
+		if (!int.TryParse(endText[..2], out endHour))
+		{
+			return false;
+		}
+
+		durationHours = endHour - startHour;
+
+		if (durationHours < 1 || durationHours > MaxReservationHours)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
 	}
 }
