@@ -253,5 +253,53 @@ public partial class MainWindow : Window
 		EnterBookingPanel();
 	}
 
+	private void SignupButton_Click(object? sender, RoutedEventArgs e)
+	{
+		var username = (SignupUsernameTextBox.Text ?? string.Empty).Trim();
+		var email = (SignupEmailTextBox.Text ?? string.Empty).Trim();
+		var password = SignupPasswordTextBox.Text ?? string.Empty;
+		var confirm = SignupConfirmPasswordTextBox.Text ?? string.Empty;
+
+		SignupMessageTextBlock.Foreground = ErrorBrush;
+
+		if (username.Length < 3)
+		{
+			SignupMessageTextBlock.Text = "Username must be at least 3 characters long.";
+			return;
+		}
+
+		if (password.Length < 6)
+		{
+			SignupMessageTextBlock.Text = "Password must be at least 6 characters long.";
+			return;
+		}
+
+		if (!IsEmailAddressValid(email))
+		{
+			SignupMessageTextBlock.Text = "Please provide a valid email address.";
+			return;
+		}
+
+		if (password != confirm)
+		{
+			SignupMessageTextBlock.Text = "Passwords do not match.";
+			return;
+		}
+
+		if (!_dataStore.SignUp(username, email, password, out var errorMessage))
+		{
+			SignupMessageTextBlock.Text = errorMessage;
+			return;
+		}
+
+		SignupMessageTextBlock.Foreground = SuccessBrush;
+		SignupMessageTextBlock.Text = "Account created. You can now log in.";
+
+		SignupUsernameTextBox.Text = string.Empty;
+		SignupEmailTextBox.Text = string.Empty;
+		SignupPasswordTextBox.Text = string.Empty;
+		SignupConfirmPasswordTextBox.Text = string.Empty;
+	}
+
 	}
 }
