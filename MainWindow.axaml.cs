@@ -923,5 +923,10 @@ public partial class MainWindow : Window
 		var selectedDate = ReservationDatePicker.SelectedDate?.DateTime.Date ?? DateTime.Today;
 		return DateOnly.FromDateTime(selectedDate);
 	}
+
+	private decimal GetSeatRate(string seatId)
+	{
+		return _seatRates.GetValueOrDefault(seatId, ConvertUsdToPhp(3.00m));
+	}
 	}
 }
