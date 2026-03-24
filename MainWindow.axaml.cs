@@ -301,5 +301,16 @@ public partial class MainWindow : Window
 		SignupConfirmPasswordTextBox.Text = string.Empty;
 	}
 
+	private void LogoutButton_Click(object? sender, RoutedEventArgs e)
+	{
+		_currentUser = null;
+		_selectedSeats.Clear();
+
+		AuthPanel.IsVisible = true;
+		BookingPanel.IsVisible = false;
+
+		ClearAuthInputs();
+		RefreshReservationViews();
+	}
 	}
 }
