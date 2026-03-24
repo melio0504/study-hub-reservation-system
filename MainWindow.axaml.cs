@@ -541,5 +541,58 @@ public partial class MainWindow : Window
 			? items
 			: new List<string> { "No reservations yet for this date." };
 	}
+
+	private void UpdateDetailPanel()
+	{
+		var selectedSeatIds = _selectedSeats.OrderBy(seatId => seatId).ToList();
+		SelectedSeatTextBlock.Text = selectedSeatIds.Any()
+			? string.Join(", ", selectedSeatIds)
+			: "None";
+
+		if (!selectedSeatIds.Any())
+		{
+			SeatRateTextBlock.Text = "-";
+			CostSummaryTextBlock.Text = $"Select up to {MaxSelectableSeats} seats to see pricing details.";
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "No seats selected.";
+			return;
+		}
+
+		var date = GetSelectedDate();
+		var hasSlot = TryGetSelectedReservationSlot(out _, out var startHour, out var endHour, out var durationHours);
+		var hourlyRates = selectedSeatIds.Select(GetSeatRate).ToList();
+		var minRate = hourlyRates.Min();
+		var maxRate = hourlyRates.Max();
+		var total = selectedSeatIds.Sum(seatId => CalculateTotalCost(GetSeatRate(seatId), durationHours, date));
+		var isWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+
+		SeatRateTextBlock.Text = minRate == maxRate
+			? $"PHP {minRate:F2}/hour per seat"
+			: $"PHP {minRate:F2} - PHP {maxRate:F2}/hour per seat";
+		CostSummaryTextBlock.Text = hasSlot
+			? $"{selectedSeatIds.Count} seat(s) | {startHour:00}:00-{endHour:00}:00 ({durationHours} hour(s)) {(isWeekend ? "+ weekend surcharge" : string.Empty)} | Total PHP {total:F2}"
+			: "Choose a valid date and time to calculate cost.";
+
+		var reservations = _dataStore.GetReservationsForDate(date);
+		var occupiedSeats = hasSlot
+			? selectedSeatIds
+				.Where(seatId => reservations.Any(r =>
+					r.SeatId == seatId
+					&& TimesOverlap(r.StartHour, r.DurationHours, startHour, durationHours)))
+				.ToList()
+			: new List<string>();
+
+		if (occupiedSeats.Any())
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = $"Unavailable for this slot: {string.Join(", ", occupiedSeats)}.";
+		}
+		else
+		{
+			SeatStatusTextBlock.Foreground = SuccessBrush;
+			SeatStatusTextBlock.Text = $"{selectedSeatIds.Count} selected seat(s) are available for this slot.";
+		}
+	}
+
 	}
 }
