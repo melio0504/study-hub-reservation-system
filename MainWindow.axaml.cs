@@ -353,5 +353,46 @@ public partial class MainWindow : Window
 		var dotAfterAt = email.IndexOf('.', atIndex + 2);
 		return dotAfterAt > atIndex + 1 && dotAfterAt < email.Length - 1;
 	}
+
+	private void SeatButton_Click(object? sender, RoutedEventArgs e)
+	{
+		if (sender is not Button button || button.Tag is not string seatId)
+		{
+			return;
+		}
+
+		if (_selectedSeats.Contains(seatId))
+		{
+			_selectedSeats.Remove(seatId);
+			RefreshReservationViews();
+			return;
+		}
+
+		if (_selectedSeats.Count >= MaxSelectableSeats)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = $"You can only select up to {MaxSelectableSeats} seats per reservation.";
+			return;
+		}
+
+		if (TryGetSelectedReservationSlot(out var date, out var startHour, out _, out var durationHours))
+		{
+			var reservations = _dataStore.GetReservationsForDate(date);
+			var isUnavailable = reservations.Any(r =>
+				r.SeatId == seatId
+				&& TimesOverlap(r.StartHour, r.DurationHours, startHour, durationHours));
+
+			if (isUnavailable)
+			{
+				SeatStatusTextBlock.Foreground = ErrorBrush;
+				SeatStatusTextBlock.Text = $"Seat {seatId} is unavailable for the selected slot.";
+				return;
+			}
+		}
+
+		_selectedSeats.Add(seatId);
+		RefreshReservationViews();
+	}
+
 	}
 }
