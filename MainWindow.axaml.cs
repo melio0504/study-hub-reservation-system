@@ -323,5 +323,18 @@ public partial class MainWindow : Window
 		_selectedSeats.Clear();
 		RefreshReservationViews();
 	}
+
+	private void ClearAuthInputs()
+	{
+		LoginUsernameTextBox.Text = string.Empty;
+		LoginPasswordTextBox.Text = string.Empty;
+		SignupUsernameTextBox.Text = string.Empty;
+		SignupEmailTextBox.Text = string.Empty;
+		SignupPasswordTextBox.Text = string.Empty;
+		SignupConfirmPasswordTextBox.Text = string.Empty;
+		LoginMessageTextBlock.Text = string.Empty;
+		SignupMessageTextBlock.Text = string.Empty;
+		SignupMessageTextBlock.Foreground = ErrorBrush;
+	}
 	}
 }
