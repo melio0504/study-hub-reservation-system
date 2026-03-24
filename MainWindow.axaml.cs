@@ -891,5 +891,32 @@ public partial class MainWindow : Window
 		return true;
 	}
 
+	private void UpdateEndTimeOptions()
+	{
+		if (StartHourComboBox.SelectedItem is not string startText
+			|| !int.TryParse(startText[..2], out var startHour))
+		{
+			EndHourComboBox.ItemsSource = new List<string>();
+			return;
+		}
+
+		var latestEndHour = Math.Min(startHour + MaxReservationHours, ClosingHour);
+		var options = Enumerable.Range(startHour + 1, latestEndHour - startHour)
+			.Select(hour => $"{hour:00}:00")
+			.ToList();
+
+		var previousSelection = EndHourComboBox.SelectedItem as string;
+		EndHourComboBox.ItemsSource = options;
+
+		if (previousSelection is not null && options.Contains(previousSelection))
+		{
+			EndHourComboBox.SelectedItem = previousSelection;
+		}
+		else
+		{
+			EndHourComboBox.SelectedIndex = 0;
+		}
+	}
+
 	}
 }
