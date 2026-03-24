@@ -494,5 +494,14 @@ public partial class MainWindow : Window
 			"Reserved Successfully. Please check your email for receipt.");
 	}
 
+	private void RefreshReservationViews()
+	{
+		var selectedDate = GetSelectedDate();
+		var reservations = _dataStore.GetReservationsForDate(selectedDate);
+
+		UpdateSeatButtons(reservations);
+		UpdateReservationList(reservations);
+		UpdateDetailPanel();
+	}
 	}
 }
