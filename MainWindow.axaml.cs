@@ -39,5 +39,11 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
+
+		InitializeSeatRates();
+		InitializeReservationInputs();
+		BuildSeatGrid();
+		RefreshReservationViews();
+	}
 	}
 }
