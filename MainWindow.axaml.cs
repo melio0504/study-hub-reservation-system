@@ -528,5 +528,18 @@ public partial class MainWindow : Window
 		}
 	}
 
+	private void UpdateReservationList(IReadOnlyList<Reservation> dayReservations)
+	{
+		var items = dayReservations
+			.OrderBy(r => r.SeatId)
+			.ThenBy(r => r.StartHour)
+			.Select(r =>
+				$"Seat {r.SeatId} | {r.StartHour:00}:00-{r.StartHour + r.DurationHours:00}:00 | {r.Username} | {r.PaymentMethod} | PHP {r.TotalCost:F2}")
+			.ToList();
+
+		ReservationsListBox.ItemsSource = items.Any()
+			? items
+			: new List<string> { "No reservations yet for this date." };
+	}
 	}
 }
