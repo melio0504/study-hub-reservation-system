@@ -163,5 +163,27 @@ public partial class MainWindow : Window
 		SeatCanvas.Children.Add(guide);
 	}
 
+	private static IReadOnlyList<SeatPlacement> CreateSeatLayout()
+	{
+		var seats = new List<SeatPlacement>();
+
+		// Left upper area: two 4-seat rows plus one 4-seat row near the corridor.
+		AddSeatBlock(seats, "LA", startIndex: 1, startX: 35, startY: 120, rows: 2, columns: 4, rate: ConvertUsdToPhp(4.00m));
+		AddSeatBlock(seats, "LB", startIndex: 1, startX: 35, startY: 280, rows: 1, columns: 4, rate: ConvertUsdToPhp(4.00m));
+
+		// Right upper area: two full rows and one short row beside cashier.
+		AddSeatBlock(seats, "UA", startIndex: 1, startX: 570, startY: 100, rows: 2, columns: 4, rate: ConvertUsdToPhp(4.00m));
+		AddSeatBlock(seats, "UB", startIndex: 1, startX: 686, startY: 210, rows: 1, columns: 2, rate: ConvertUsdToPhp(4.00m));
+
+		// Lower-right wing: matches the provided layout (left vertical line, three 2x3 blocks, bottom row).
+		AddSeatBlock(seats, "LW", startIndex: 1, startX: 500, startY: 318, rows: 4, columns: 1, rate: ConvertUsdToPhp(3.00m), rowStep: 64);
+		AddSeatBlock(seats, "RA", startIndex: 1, startX: 620, startY: 285, rows: 3, columns: 2, rate: ConvertUsdToPhp(3.00m), columnStep: 62, rowStep: 62);
+		AddSeatBlock(seats, "RB", startIndex: 1, startX: 800, startY: 285, rows: 3, columns: 2, rate: ConvertUsdToPhp(3.00m), columnStep: 62, rowStep: 62);
+		AddSeatBlock(seats, "RC", startIndex: 1, startX: 980, startY: 285, rows: 3, columns: 2, rate: ConvertUsdToPhp(3.00m), columnStep: 62, rowStep: 62);
+		AddSeatBlock(seats, "BR", startIndex: 1, startX: 560, startY: 506, rows: 1, columns: 9, rate: ConvertUsdToPhp(3.00m), columnStep: 62);
+
+		return seats;
+	}
+
 	}
 }
