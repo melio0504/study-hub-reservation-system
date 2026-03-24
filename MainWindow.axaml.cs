@@ -45,5 +45,13 @@ public partial class MainWindow : Window
 		BuildSeatGrid();
 		RefreshReservationViews();
 	}
+
+	private void InitializeSeatRates()
+	{
+		foreach (var seat in SeatLayout)
+		{
+			_seatRates[seat.SeatId] = seat.HourlyRate;
+		}
+	}
 	}
 }
