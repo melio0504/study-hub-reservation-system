@@ -934,5 +934,11 @@ public partial class MainWindow : Window
 		return Math.Round(usdAmount * UsdToPhpRate, 2);
 	}
 
+	private static decimal CalculateTotalCost(decimal hourlyRate, int duration, DateOnly date)
+	{
+		var baseCost = hourlyRate * duration;
+		var surcharge = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? 0.15m : 0m;
+		return Math.Round(baseCost * (1 + surcharge), 2);
+	}
 	}
 }
