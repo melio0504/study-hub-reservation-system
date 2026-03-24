@@ -940,5 +940,11 @@ public partial class MainWindow : Window
 		var surcharge = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? 0.15m : 0m;
 		return Math.Round(baseCost * (1 + surcharge), 2);
 	}
+
+	private static bool TimesOverlap(int startA, int durationA, int startB, int durationB)
+	{
+		var endA = startA + durationA;
+		var endB = startB + durationB;
+		return startA < endB && startB < endA;
 	}
 }
