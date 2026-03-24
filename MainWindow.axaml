@@ -246,6 +246,48 @@
                         </StackPanel>
                     </Border>
 
+                    <Border Grid.Column="1" Classes="card" Padding="14" CornerRadius="10" BorderThickness="1">
+                        <ScrollViewer>
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Reservation Information" Classes="heading" />
+
+                                <TextBlock Text="Selected Seats" Classes="label" />
+                                <TextBlock Name="SelectedSeatTextBlock" Text="None" />
+
+                                <TextBlock Text="Reservation Date" Classes="label" />
+                                <DatePicker Name="ReservationDatePicker"
+                                            SelectedDateChanged="ReservationDatePicker_SelectedDateChanged" />
+
+                                <TextBlock Text="Start Time" Classes="label" />
+                                <ComboBox Name="StartHourComboBox"
+                                          SelectionChanged="ReservationInputs_SelectionChanged" />
+
+                                <TextBlock Text="End Time" Classes="label" />
+                                <ComboBox Name="EndHourComboBox"
+                                          SelectionChanged="ReservationInputs_SelectionChanged" />
+
+                                <TextBlock Text="Seat Rate" Classes="label" />
+                                <TextBlock Name="SeatRateTextBlock" />
+
+                                <TextBlock Text="Cost Summary" Classes="label" />
+                                <TextBlock Name="CostSummaryTextBlock" TextWrapping="Wrap" />
+
+                                <TextBlock Text="Status" Classes="label" />
+                                <TextBlock Name="SeatStatusTextBlock"
+                                       Foreground="#FF3B30"
+                                           TextWrapping="Wrap" />
+
+                                <Button Content="Reserve Selected Seats"
+                                    Classes="primary"
+                                        Margin="0,8,0,0"
+                                        Click="ReserveButton_Click" />
+
+                                <TextBlock Text="Reserved Seats for Selected Date" Classes="label" Margin="0,16,0,6" />
+                                <ListBox Name="ReservationsListBox" Height="220" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>
