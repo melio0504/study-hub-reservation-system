@@ -99,5 +99,69 @@ public partial class MainWindow : Window
 		}
 	}
 
+	private void AddFloorPlanDecor()
+	{
+		var cashierBox = new Border
+		{
+			Width = 270,
+			Height = 120,
+			CornerRadius = new CornerRadius(16),
+			BorderThickness = new Thickness(2),
+			BorderBrush = new SolidColorBrush(Color.Parse("#8E8E93")),
+			Background = new SolidColorBrush(Color.Parse("#F5F5F7")),
+			Child = new TextBlock
+			{
+				Text = "CASHIER",
+				FontSize = 32,
+				FontWeight = FontWeight.Bold,
+				Foreground = new SolidColorBrush(Color.Parse("#3A3A3C")),
+				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+				VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+			}
+		};
+
+		Canvas.SetLeft(cashierBox, 290 * SeatPlanScale);
+		Canvas.SetTop(cashierBox, 65 * SeatPlanScale);
+		SeatCanvas.Children.Add(cashierBox);
+
+		var doorwayIndicator = new StackPanel
+		{
+			Spacing = 6,
+			Children =
+			{
+				new Border
+				{
+					Width = 210,
+					Height = 12,
+					CornerRadius = new CornerRadius(6),
+					Background = new SolidColorBrush(Color.Parse("#C7C7CC"))
+				},
+				new TextBlock
+				{
+					Text = "DOORWAY",
+					FontSize = 17,
+					FontWeight = FontWeight.SemiBold,
+					Foreground = new SolidColorBrush(Color.Parse("#3A3A3C")),
+					HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+				}
+			}
+		};
+
+		Canvas.SetLeft(doorwayIndicator, 320 * SeatPlanScale);
+		Canvas.SetTop(doorwayIndicator, (210 * SeatPlanScale) + 120);
+		SeatCanvas.Children.Add(doorwayIndicator);
+
+		var guide = new TextBlock
+		{
+			Text = "Layout follows the in-store floor plan.",
+			FontSize = 16,
+			Foreground = new SolidColorBrush(Color.Parse("#6E6E73"))
+		};
+
+		Canvas.SetLeft(guide, 20 * SeatPlanScale);
+		Canvas.SetTop(guide, 20 * SeatPlanScale);
+		SeatCanvas.Children.Add(guide);
+	}
+
 	}
 }
