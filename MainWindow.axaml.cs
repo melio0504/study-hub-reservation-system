@@ -594,5 +594,15 @@ public partial class MainWindow : Window
 		}
 	}
 
+	private List<string> GetUnavailableSelectedSeats(DateOnly date, int startHour, int durationHours)
+	{
+		var reservations = _dataStore.GetReservationsForDate(date);
+		return _selectedSeats
+			.Where(seatId => reservations.Any(r =>
+				r.SeatId == seatId
+				&& TimesOverlap(r.StartHour, r.DurationHours, startHour, durationHours)))
+			.OrderBy(seatId => seatId)
+			.ToList();
+	}
 	}
 }
