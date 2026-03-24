@@ -312,5 +312,16 @@ public partial class MainWindow : Window
 		ClearAuthInputs();
 		RefreshReservationViews();
 	}
+
+	private void EnterBookingPanel()
+	{
+		WelcomeTextBlock.Text = $"Welcome, {_currentUser}. Reserve your seat below.";
+
+		AuthPanel.IsVisible = false;
+		BookingPanel.IsVisible = true;
+
+		_selectedSeats.Clear();
+		RefreshReservationViews();
+	}
 	}
 }
