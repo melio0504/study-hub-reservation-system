@@ -721,5 +721,67 @@ public partial class MainWindow : Window
 			}
 		};
 
+		var completionSource = new TaskCompletionSource<PaymentDetails?>();
+
+		cancelButton.Click += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(null);
+			}
+
+			dialog.Close();
+		};
+
+		payButton.Click += (_, _) =>
+		{
+			if (paymentMethodComboBox.SelectedItem is not string method)
+			{
+				errorTextBlock.Text = "Please choose a payment method.";
+				return;
+			}
+
+			var accountName = (accountNameTextBox.Text ?? string.Empty).Trim();
+			var accountNumber = (accountNumberTextBox.Text ?? string.Empty).Trim();
+			var secondaryDetail = (secondaryDetailTextBox.Text ?? string.Empty).Trim();
+
+			if (string.IsNullOrWhiteSpace(accountName))
+			{
+				errorTextBlock.Text = "Account name is required.";
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(accountNumber))
+			{
+				errorTextBlock.Text = "Account number is required.";
+				return;
+			}
+
+			if (!IsPaymentInputValid(method, accountNumber, secondaryDetail, out var validationError))
+			{
+				errorTextBlock.Text = validationError;
+				return;
+			}
+
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(new PaymentDetails(method, accountName, accountNumber, secondaryDetail));
+			}
+
+			dialog.Close();
+		};
+
+		dialog.Closed += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(null);
+			}
+		};
+
+		await dialog.ShowDialog(this);
+		return await completionSource.Task;
+	}
+
 	}
 }
