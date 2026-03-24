@@ -230,5 +230,28 @@ public partial class MainWindow : Window
 		public double Top { get; }
 		public decimal HourlyRate { get; }
 	}
+
+	private void LoginButton_Click(object? sender, RoutedEventArgs e)
+	{
+		var username = (LoginUsernameTextBox.Text ?? string.Empty).Trim();
+		var password = LoginPasswordTextBox.Text ?? string.Empty;
+
+		if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+		{
+			LoginMessageTextBlock.Text = "Please provide both username and password.";
+			return;
+		}
+
+		if (!_dataStore.ValidateLogin(username, password))
+		{
+			LoginMessageTextBlock.Text = "Invalid username or password.";
+			return;
+		}
+
+		LoginMessageTextBlock.Text = string.Empty;
+		_currentUser = username;
+		EnterBookingPanel();
+	}
+
 	}
 }
