@@ -408,5 +408,91 @@ public partial class MainWindow : Window
 
 		RefreshReservationViews();
 	}
+
+	private async void ReserveButton_Click(object? sender, RoutedEventArgs e)
+	{
+		if (_currentUser is null)
+		{
+			SeatStatusTextBlock.Text = "Please log in first.";
+			return;
+		}
+
+		if (!_selectedSeats.Any())
+		{
+			SeatStatusTextBlock.Text = "Select at least one seat from the seat plan first.";
+			return;
+		}
+
+		if (_selectedSeats.Count > MaxSelectableSeats)
+		{
+			SeatStatusTextBlock.Text = $"You can only reserve up to {MaxSelectableSeats} seats at once.";
+			return;
+		}
+
+		if (!TryGetSelectedReservationSlot(out var date, out var startHour, out _, out var durationHours))
+		{
+			SeatStatusTextBlock.Text = "Please choose a valid date, start time, and end time.";
+			return;
+		}
+
+		var unavailableSeats = GetUnavailableSelectedSeats(date, startHour, durationHours);
+		if (unavailableSeats.Any())
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = $"These selected seats are unavailable: {string.Join(", ", unavailableSeats)}.";
+			return;
+		}
+
+		var selectedSeatIds = _selectedSeats.OrderBy(seatId => seatId).ToList();
+		var totalCost = selectedSeatIds.Sum(seatId =>
+		{
+			var rate = GetSeatRate(seatId);
+			return CalculateTotalCost(rate, durationHours, date);
+		});
+
+		var paymentDetails = await ShowPaymentDialogAsync(totalCost);
+		if (paymentDetails is null)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Payment canceled. Reservation not saved.";
+			return;
+		}
+
+		foreach (var seatId in selectedSeatIds)
+		{
+			var hourlyRate = GetSeatRate(seatId);
+			var reservation = new Reservation
+			{
+				ReservationId = Guid.NewGuid().ToString("N"),
+				Username = _currentUser,
+				SeatId = seatId,
+				ReservationDate = date,
+				StartHour = startHour,
+				// Stored as duration for conflict checks and data compatibility.
+				DurationHours = durationHours,
+				HourlyRate = hourlyRate,
+				TotalCost = CalculateTotalCost(hourlyRate, durationHours, date),
+				PaymentMethod = paymentDetails.Method
+			};
+
+			if (!_dataStore.TryCreateReservation(reservation, out var errorMessage))
+			{
+				SeatStatusTextBlock.Foreground = ErrorBrush;
+				SeatStatusTextBlock.Text = errorMessage;
+				RefreshReservationViews();
+				return;
+			}
+		}
+
+		SeatStatusTextBlock.Foreground = SuccessBrush;
+		SeatStatusTextBlock.Text = $"Reservation confirmed for {selectedSeatIds.Count} seat(s) on {date:MMMM dd, yyyy}.";
+		_selectedSeats.Clear();
+		RefreshReservationViews();
+
+		await ShowInfoDialogAsync(
+			"Reservation Successful",
+			"Reserved Successfully. Please check your email for receipt.");
+	}
+
 	}
 }
