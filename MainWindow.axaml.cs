@@ -66,5 +66,38 @@ public partial class MainWindow : Window
 		UpdateEndTimeOptions();
 
 	}
+
+	private void BuildSeatGrid()
+	{
+		SeatCanvas.Children.Clear();
+		_seatButtons.Clear();
+
+		AddFloorPlanDecor();
+
+		foreach (var seat in SeatLayout)
+		{
+			var button = new Button
+			{
+				Content = seat.SeatId,
+				Tag = seat.SeatId,
+				Width = 60,
+				Height = 54,
+				MinHeight = 54,
+				Padding = new Thickness(0),
+				FontWeight = FontWeight.SemiBold,
+				FontSize = 14,
+				HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+				VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
+			};
+
+			button.Click += SeatButton_Click;
+			_seatButtons[seat.SeatId] = button;
+
+			Canvas.SetLeft(button, seat.Left * SeatPlanScale);
+			Canvas.SetTop(button, seat.Top * SeatPlanScale);
+			SeatCanvas.Children.Add(button);
+		}
+	}
+
 	}
 }
