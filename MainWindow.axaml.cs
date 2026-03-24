@@ -398,5 +398,15 @@ public partial class MainWindow : Window
 	{
 		RefreshReservationViews();
 	}
+
+	private void ReservationInputs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+	{
+		if (sender == StartHourComboBox)
+		{
+			UpdateEndTimeOptions();
+		}
+
+		RefreshReservationViews();
+	}
 	}
 }
