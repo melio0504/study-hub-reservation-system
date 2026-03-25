@@ -79,4 +79,13 @@ public class AppDataStore
         return true;
     }
 
+    public bool ValidateLogin(string username, string password)
+    {
+        var users = LoadUsers();
+        var hash = HashPassword(password);
+
+        return users.Any(u =>
+            string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)
+            && u.PasswordHash == hash);
+    }
 }
