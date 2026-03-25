@@ -88,4 +88,9 @@ public class AppDataStore
             string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)
             && u.PasswordHash == hash);
     }
+
+    public IReadOnlyList<Reservation> GetReservations()
+    {
+        return LoadReservations();
+    }
 }
