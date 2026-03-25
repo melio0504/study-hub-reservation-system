@@ -133,4 +133,21 @@ public class AppDataStore
         var endB = startB + durationB;
         return startA < endB && startB < endA;
     }
+
+    private List<UserAccount> LoadUsers()
+    {
+        if (!File.Exists(_usersPath))
+        {
+            return new List<UserAccount>();
+        }
+
+        var text = File.ReadAllText(_usersPath);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new List<UserAccount>();
+        }
+
+        return JsonSerializer.Deserialize<List<UserAccount>>(text, _jsonOptions)
+               ?? new List<UserAccount>();
+    }
 }
