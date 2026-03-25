@@ -101,4 +101,30 @@ public class AppDataStore
             .OrderBy(r => r.StartHour)
             .ToList();
     }
+
+    public bool TryCreateReservation(Reservation newReservation, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+
+        var reservations = LoadReservations();
+        var hasConflict = reservations.Any(existing =>
+            existing.SeatId == newReservation.SeatId
+            && existing.ReservationDate == newReservation.ReservationDate
+            && TimesOverlap(
+                existing.StartHour,
+                existing.DurationHours,
+                newReservation.StartHour,
+                newReservation.DurationHours));
+
+        if (hasConflict)
+        {
+            errorMessage = "Selected seat is already reserved for that time range.";
+            return false;
+        }
+
+        reservations.Add(newReservation);
+        SaveReservations(reservations);
+        return true;
+    }
+
 }
