@@ -13,7 +13,11 @@ namespace study_hub_reservation_system;
 
 public partial class MainWindow : Window
 {
-	private const double SeatPlanScale = 1.25;
+	private const double BaseSeatPlanScale = 1.25;
+	private const double BaseCanvasWidth = 1450;
+	private const double BaseCanvasHeight = 680;
+	private const double MinSeatPlanFitScale = 0.65;
+	private const double MaxSeatPlanFitScale = 1.08;
 	private const int OpeningHour = 8;
 	private const int LastStartHour = 20;
 	private const int ClosingHour = 22;
@@ -24,6 +28,7 @@ public partial class MainWindow : Window
 	private readonly AppDataStore _dataStore = new();
 	private readonly Dictionary<string, Button> _seatButtons = new();
 	private readonly Dictionary<string, decimal> _seatRates = new();
+	private double _seatPlanFitScale = 1.0;
 	private static readonly IReadOnlyList<SeatPlacement> SeatLayout = CreateSeatLayout();
 	private static readonly IBrush ErrorBrush = new SolidColorBrush(Color.Parse("#FF3B30"));
 	private static readonly IBrush SuccessBrush = new SolidColorBrush(Color.Parse("#34C759"));
@@ -39,9 +44,42 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
+		Opened += MainWindow_Opened;
+		SeatPlanScrollViewer.SizeChanged += SeatPlanScrollViewer_SizeChanged;
 
 		InitializeSeatRates();
 		InitializeReservationInputs();
+		BuildSeatGrid();
+		RefreshReservationViews();
+	}
+
+	private void MainWindow_Opened(object? sender, EventArgs e)
+	{
+		UpdateSeatPlanScaleAndRefresh();
+	}
+
+	private void SeatPlanScrollViewer_SizeChanged(object? sender, SizeChangedEventArgs e)
+	{
+		UpdateSeatPlanScaleAndRefresh();
+	}
+
+	private void UpdateSeatPlanScaleAndRefresh()
+	{
+		if (SeatPlanScrollViewer.Bounds.Width <= 0 || SeatPlanScrollViewer.Bounds.Height <= 0)
+		{
+			return;
+		}
+
+		var widthScale = SeatPlanScrollViewer.Bounds.Width / BaseCanvasWidth;
+		var heightScale = SeatPlanScrollViewer.Bounds.Height / BaseCanvasHeight;
+		var fitScale = Math.Clamp(Math.Min(widthScale, heightScale), MinSeatPlanFitScale, MaxSeatPlanFitScale);
+
+		if (Math.Abs(_seatPlanFitScale - fitScale) < 0.03)
+		{
+			return;
+		}
+
+		_seatPlanFitScale = fitScale;
 		BuildSeatGrid();
 		RefreshReservationViews();
 	}
@@ -72,6 +110,14 @@ public partial class MainWindow : Window
 		SeatCanvas.Children.Clear();
 		_seatButtons.Clear();
 
+		var seatPlanScale = BaseSeatPlanScale * _seatPlanFitScale;
+		var seatButtonWidth = Math.Max(40, 60 * _seatPlanFitScale);
+		var seatButtonHeight = Math.Max(36, 54 * _seatPlanFitScale);
+		var seatFontSize = Math.Max(11, 14 * _seatPlanFitScale);
+
+		SeatCanvas.Width = BaseCanvasWidth * _seatPlanFitScale;
+		SeatCanvas.Height = BaseCanvasHeight * _seatPlanFitScale;
+
 		AddFloorPlanDecor();
 
 		foreach (var seat in SeatLayout)
@@ -80,12 +126,12 @@ public partial class MainWindow : Window
 			{
 				Content = seat.SeatId,
 				Tag = seat.SeatId,
-				Width = 60,
-				Height = 54,
-				MinHeight = 54,
+				Width = seatButtonWidth,
+				Height = seatButtonHeight,
+				MinHeight = seatButtonHeight,
 				Padding = new Thickness(0),
 				FontWeight = FontWeight.SemiBold,
-				FontSize = 14,
+				FontSize = seatFontSize,
 				HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
 				VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
 			};
@@ -93,26 +139,29 @@ public partial class MainWindow : Window
 			button.Click += SeatButton_Click;
 			_seatButtons[seat.SeatId] = button;
 
-			Canvas.SetLeft(button, seat.Left * SeatPlanScale);
-			Canvas.SetTop(button, seat.Top * SeatPlanScale);
+			Canvas.SetLeft(button, seat.Left * seatPlanScale);
+			Canvas.SetTop(button, seat.Top * seatPlanScale);
 			SeatCanvas.Children.Add(button);
 		}
 	}
 
 	private void AddFloorPlanDecor()
 	{
+		var seatPlanScale = BaseSeatPlanScale * _seatPlanFitScale;
+		var decorScale = _seatPlanFitScale;
+
 		var cashierBox = new Border
 		{
-			Width = 270,
-			Height = 120,
-			CornerRadius = new CornerRadius(16),
+			Width = 270 * decorScale,
+			Height = 120 * decorScale,
+			CornerRadius = new CornerRadius(16 * decorScale),
 			BorderThickness = new Thickness(2),
 			BorderBrush = new SolidColorBrush(Color.Parse("#8E8E93")),
 			Background = new SolidColorBrush(Color.Parse("#F5F5F7")),
 			Child = new TextBlock
 			{
 				Text = "CASHIER",
-				FontSize = 32,
+				FontSize = Math.Max(14, 32 * decorScale),
 				FontWeight = FontWeight.Bold,
 				Foreground = new SolidColorBrush(Color.Parse("#3A3A3C")),
 				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
@@ -120,8 +169,8 @@ public partial class MainWindow : Window
 			}
 		};
 
-		Canvas.SetLeft(cashierBox, 290 * SeatPlanScale);
-		Canvas.SetTop(cashierBox, 65 * SeatPlanScale);
+		Canvas.SetLeft(cashierBox, 290 * seatPlanScale);
+		Canvas.SetTop(cashierBox, 65 * seatPlanScale);
 		SeatCanvas.Children.Add(cashierBox);
 
 		var doorwayIndicator = new StackPanel
@@ -131,15 +180,15 @@ public partial class MainWindow : Window
 			{
 				new Border
 				{
-					Width = 210,
-					Height = 12,
-					CornerRadius = new CornerRadius(6),
+					Width = 210 * decorScale,
+					Height = Math.Max(8, 12 * decorScale),
+					CornerRadius = new CornerRadius(6 * decorScale),
 					Background = new SolidColorBrush(Color.Parse("#C7C7CC"))
 				},
 				new TextBlock
 				{
 					Text = "DOORWAY",
-					FontSize = 17,
+					FontSize = Math.Max(11, 17 * decorScale),
 					FontWeight = FontWeight.SemiBold,
 					Foreground = new SolidColorBrush(Color.Parse("#3A3A3C")),
 					HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
@@ -147,19 +196,19 @@ public partial class MainWindow : Window
 			}
 		};
 
-		Canvas.SetLeft(doorwayIndicator, 320 * SeatPlanScale);
-		Canvas.SetTop(doorwayIndicator, (210 * SeatPlanScale) + 120);
+		Canvas.SetLeft(doorwayIndicator, 320 * seatPlanScale);
+		Canvas.SetTop(doorwayIndicator, (210 * seatPlanScale) + (120 * decorScale));
 		SeatCanvas.Children.Add(doorwayIndicator);
 
 		var guide = new TextBlock
 		{
 			Text = "Layout follows the in-store floor plan.",
-			FontSize = 16,
+			FontSize = Math.Max(10, 16 * decorScale),
 			Foreground = new SolidColorBrush(Color.Parse("#6E6E73"))
 		};
 
-		Canvas.SetLeft(guide, 20 * SeatPlanScale);
-		Canvas.SetTop(guide, 20 * SeatPlanScale);
+		Canvas.SetLeft(guide, 20 * seatPlanScale);
+		Canvas.SetTop(guide, 20 * seatPlanScale);
 		SeatCanvas.Children.Add(guide);
 	}
 
