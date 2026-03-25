@@ -93,4 +93,12 @@ public class AppDataStore
     {
         return LoadReservations();
     }
+
+    public IReadOnlyList<Reservation> GetReservationsForDate(DateOnly date)
+    {
+        return LoadReservations()
+            .Where(r => r.ReservationDate == date)
+            .OrderBy(r => r.StartHour)
+            .ToList();
+    }
 }
