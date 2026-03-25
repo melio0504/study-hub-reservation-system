@@ -172,4 +172,9 @@ public class AppDataStore
     {
         File.WriteAllText(_usersPath, JsonSerializer.Serialize(users, _jsonOptions));
     }
+
+    private void SaveReservations(List<Reservation> reservations)
+    {
+        File.WriteAllText(_reservationsPath, JsonSerializer.Serialize(reservations, _jsonOptions));
+    }
 }
