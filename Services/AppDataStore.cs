@@ -51,4 +51,32 @@ public class AppDataStore
         return Path.Combine(Directory.GetCurrentDirectory(), "Database");
     }
 
+    public bool SignUp(string username, string emailAddress, string password, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        var users = LoadUsers();
+
+        if (users.Any(u => string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = "Username already exists.";
+            return false;
+        }
+
+        if (users.Any(u => string.Equals(u.EmailAddress, emailAddress, StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = "Email address is already registered.";
+            return false;
+        }
+
+        users.Add(new UserAccount
+        {
+            Username = username,
+            EmailAddress = emailAddress,
+            PasswordHash = HashPassword(password)
+        });
+
+        SaveUsers(users);
+        return true;
+    }
+
 }
