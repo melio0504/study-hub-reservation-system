@@ -15,4 +15,18 @@ public class AppDataStore
     private readonly string _reservationsPath;
     private readonly JsonSerializerOptions _jsonOptions;
 
+    public AppDataStore()
+    {
+        var dataDir = ResolveDataDirectory();
+
+        Directory.CreateDirectory(dataDir);
+
+        _usersPath = Path.Combine(dataDir, "users.json");
+        _reservationsPath = Path.Combine(dataDir, "reservations.json");
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+    }
 }
