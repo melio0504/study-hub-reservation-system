@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 	private const double BaseSeatPlanScale = 1.25;
 	private const double BaseCanvasWidth = 1450;
 	private const double BaseCanvasHeight = 680;
+	private const double CanvasBottomScrollBuffer = 56;
 	private const double MinSeatPlanFitScale = 0.65;
 	private const double MaxSeatPlanFitScale = 1.08;
 	private const int OpeningHour = 8;
@@ -116,7 +117,7 @@ public partial class MainWindow : Window
 		var seatFontSize = Math.Max(11, 14 * _seatPlanFitScale);
 
 		SeatCanvas.Width = BaseCanvasWidth * _seatPlanFitScale;
-		SeatCanvas.Height = BaseCanvasHeight * _seatPlanFitScale;
+		SeatCanvas.Height = (BaseCanvasHeight * _seatPlanFitScale) + CanvasBottomScrollBuffer;
 
 		AddFloorPlanDecor();
 
