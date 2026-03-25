@@ -167,4 +167,9 @@ public class AppDataStore
         return JsonSerializer.Deserialize<List<Reservation>>(text, _jsonOptions)
                ?? new List<Reservation>();
     }
+
+    private void SaveUsers(List<UserAccount> users)
+    {
+        File.WriteAllText(_usersPath, JsonSerializer.Serialize(users, _jsonOptions));
+    }
 }
