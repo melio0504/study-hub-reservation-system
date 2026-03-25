@@ -150,4 +150,21 @@ public class AppDataStore
         return JsonSerializer.Deserialize<List<UserAccount>>(text, _jsonOptions)
                ?? new List<UserAccount>();
     }
+
+    private List<Reservation> LoadReservations()
+    {
+        if (!File.Exists(_reservationsPath))
+        {
+            return new List<Reservation>();
+        }
+
+        var text = File.ReadAllText(_reservationsPath);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new List<Reservation>();
+        }
+
+        return JsonSerializer.Deserialize<List<Reservation>>(text, _jsonOptions)
+               ?? new List<Reservation>();
+    }
 }
