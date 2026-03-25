@@ -29,4 +29,26 @@ public class AppDataStore
             WriteIndented = true
         };
     }
+
+    private static string ResolveDataDirectory()
+    {
+        // Prefer a project-local Database folder by walking up to the directory
+        // containing the .csproj file.
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var hasProjectFile = current.GetFiles("*.csproj").Any();
+            if (hasProjectFile)
+            {
+                return Path.Combine(current.FullName, "Database");
+            }
+
+            current = current.Parent;
+        }
+
+        // Fallback to the process working directory if project root wasn't found.
+        return Path.Combine(Directory.GetCurrentDirectory(), "Database");
+    }
+
 }
