@@ -127,4 +127,10 @@ public class AppDataStore
         return true;
     }
 
+    private static bool TimesOverlap(int startA, int durationA, int startB, int durationB)
+    {
+        var endA = startA + durationA;
+        var endB = startB + durationB;
+        return startA < endB && startB < endA;
+    }
 }
