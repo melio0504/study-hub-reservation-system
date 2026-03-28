@@ -142,6 +142,81 @@ public class AppDataStore
         return true;
     }
 
+    public bool TryCancelReservation(string reservationId, string username, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(reservationId) || string.IsNullOrWhiteSpace(username))
+        {
+            errorMessage = "Invalid reservation selection.";
+            return false;
+        }
+
+        var reservations = LoadReservations();
+        var reservation = reservations.FirstOrDefault(r =>
+            string.Equals(r.ReservationId, reservationId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(r.Username, username, StringComparison.OrdinalIgnoreCase));
+
+        if (reservation is null)
+        {
+            errorMessage = "Reservation not found or you do not have permission to cancel it.";
+            return false;
+        }
+
+        reservations.Remove(reservation);
+        SaveReservations(reservations);
+        return true;
+    }
+
+    public bool TryRescheduleReservation(
+        string reservationId,
+        string username,
+        DateOnly newDate,
+        int newStartHour,
+        int newDurationHours,
+        decimal newTotalCost,
+        out string errorMessage)
+    {
+        errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(reservationId) || string.IsNullOrWhiteSpace(username))
+        {
+            errorMessage = "Invalid reservation selection.";
+            return false;
+        }
+
+        var reservations = LoadReservations();
+        var reservation = reservations.FirstOrDefault(r =>
+            string.Equals(r.ReservationId, reservationId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(r.Username, username, StringComparison.OrdinalIgnoreCase));
+
+        if (reservation is null)
+        {
+            errorMessage = "Reservation not found or you do not have permission to reschedule it.";
+            return false;
+        }
+
+        var hasConflict = reservations.Any(existing =>
+            !string.Equals(existing.ReservationId, reservation.ReservationId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(existing.SeatId, reservation.SeatId, StringComparison.OrdinalIgnoreCase)
+            && existing.ReservationDate == newDate
+            && TimesOverlap(existing.StartHour, existing.DurationHours, newStartHour, newDurationHours));
+
+        if (hasConflict)
+        {
+            errorMessage = "This seat is already reserved for the new time range.";
+            return false;
+        }
+
+        reservation.ReservationDate = newDate;
+        reservation.StartHour = newStartHour;
+        reservation.DurationHours = newDurationHours;
+        reservation.TotalCost = newTotalCost;
+
+        SaveReservations(reservations);
+        return true;
+    }
+
     private static bool TimesOverlap(int startA, int durationA, int startB, int durationB)
     {
         var endA = startA + durationA;
