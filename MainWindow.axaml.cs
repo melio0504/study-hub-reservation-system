@@ -551,6 +551,7 @@ public partial class MainWindow : Window
 
 		UpdateSeatButtons(reservations);
 		UpdateReservationList(reservations);
+		UpdateMyBookingLists();
 		UpdateDetailPanel();
 	}
 
@@ -590,6 +591,54 @@ public partial class MainWindow : Window
 		ReservationsListBox.ItemsSource = items.Any()
 			? items
 			: new List<string> { "No reservations yet for this date." };
+	}
+
+	private void UpdateMyBookingLists()
+	{
+		if (string.IsNullOrWhiteSpace(_currentUser))
+		{
+			var signedOutMessage = new List<string> { "Log in to view your bookings." };
+			MyUpcomingBookingsListBox.ItemsSource = signedOutMessage;
+			MyPastBookingsListBox.ItemsSource = signedOutMessage;
+			return;
+		}
+
+		var now = DateTime.Now;
+		var userReservations = _dataStore.GetReservationsForUser(_currentUser);
+
+		var upcomingItems = userReservations
+			.Where(reservation => GetReservationEndDateTime(reservation) > now)
+			.OrderBy(reservation => reservation.ReservationDate)
+			.ThenBy(reservation => reservation.StartHour)
+			.Select(FormatUserBookingItem)
+			.ToList();
+
+		var pastItems = userReservations
+			.Where(reservation => GetReservationEndDateTime(reservation) <= now)
+			.OrderByDescending(reservation => reservation.ReservationDate)
+			.ThenByDescending(reservation => reservation.StartHour)
+			.Select(FormatUserBookingItem)
+			.ToList();
+
+		MyUpcomingBookingsListBox.ItemsSource = upcomingItems.Any()
+			? upcomingItems
+			: new List<string> { "No upcoming bookings." };
+
+		MyPastBookingsListBox.ItemsSource = pastItems.Any()
+			? pastItems
+			: new List<string> { "No past bookings yet." };
+	}
+
+	private static string FormatUserBookingItem(Reservation reservation)
+	{
+		var endHour = reservation.StartHour + reservation.DurationHours;
+		return $"{reservation.ReservationDate:MMM dd, yyyy} | {reservation.StartHour:00}:00-{endHour:00}:00 | Seat {reservation.SeatId} | {reservation.PaymentMethod} | PHP {reservation.TotalCost:F2}";
+	}
+
+	private static DateTime GetReservationEndDateTime(Reservation reservation)
+	{
+		var startDateTime = reservation.ReservationDate.ToDateTime(new TimeOnly(reservation.StartHour, 0));
+		return startDateTime.AddHours(reservation.DurationHours);
 	}
 
 	private void UpdateDetailPanel()
