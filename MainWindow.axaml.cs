@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -891,7 +892,7 @@ public partial class MainWindow : Window
 
 		var confirmed = await ShowConfirmationDialogAsync(
 			"Confirm Cancellation",
-			$"Cancel Seat {selectedBooking.Reservation.SeatId} on {selectedBooking.Reservation.ReservationDate:MMMM dd, yyyy} at {selectedBooking.Reservation.StartHour:00}:00?");
+			$"Cancel Seat {selectedBooking.Reservation.SeatId} on {selectedBooking.Reservation.ReservationDate:MMMM dd, yyyy} at {FormatHourLabel(selectedBooking.Reservation.StartHour)}?");
 
 		if (!confirmed)
 		{
@@ -963,7 +964,7 @@ public partial class MainWindow : Window
 
 		SeatStatusTextBlock.Foreground = SuccessBrush;
 		SeatStatusTextBlock.Text =
-			$"Booking rescheduled: Seat {selectedBooking.Reservation.SeatId} on {rescheduleDetails.Date:MMMM dd, yyyy} at {rescheduleDetails.StartHour:00}:00.";
+			$"Booking rescheduled: Seat {selectedBooking.Reservation.SeatId} on {rescheduleDetails.Date:MMMM dd, yyyy} at {FormatHourLabel(rescheduleDetails.StartHour)}.";
 		RefreshReservationViews();
 	}
 
@@ -1035,10 +1036,10 @@ public partial class MainWindow : Window
 			var selectedDate = DateOnly.FromDateTime(datePicker.SelectedDate?.DateTime.Date ?? DateTime.Today);
 			var (openingHour, _) = GetOperatingWindow(selectedDate);
 			var options = Enumerable.Range(openingHour, 24 - openingHour)
-				.Select(hour => $"{hour:00}:00")
+				.Select(FormatHourLabel)
 				.ToList();
 
-			var preferredStart = $"{reservation.StartHour:00}:00";
+			var preferredStart = FormatHourLabel(reservation.StartHour);
 			startHourComboBox.ItemsSource = options;
 			startHourComboBox.SelectedItem = options.Contains(preferredStart)
 				? preferredStart
@@ -1656,7 +1657,7 @@ public partial class MainWindow : Window
 		var date = GetSelectedDate();
 		var (openingHour, _) = GetOperatingWindow(date);
 		var options = Enumerable.Range(openingHour, 24 - openingHour)
-			.Select(hour => $"{hour:00}:00")
+			.Select(FormatHourLabel)
 			.ToList();
 
 		var previousSelection = StartHourComboBox.SelectedItem as string;
@@ -1753,19 +1754,41 @@ public partial class MainWindow : Window
 	{
 		hour = 0;
 
-		if (string.IsNullOrWhiteSpace(hourText) || hourText.Length < 2)
+		if (string.IsNullOrWhiteSpace(hourText))
 		{
 			return false;
 		}
 
-		return int.TryParse(hourText[..2], out hour);
+		var candidate = hourText.Trim();
+		const string nextDaySuffix = "(+1d)";
+
+		var suffixIndex = candidate.IndexOf(nextDaySuffix, StringComparison.OrdinalIgnoreCase);
+		if (suffixIndex >= 0)
+		{
+			candidate = candidate[..suffixIndex].TrimEnd();
+		}
+
+		var acceptedFormats = new[] { "H:mm", "HH:mm", "h:mm tt", "hh:mm tt" };
+		if (!DateTime.TryParseExact(
+				candidate,
+				acceptedFormats,
+				CultureInfo.InvariantCulture,
+				DateTimeStyles.None,
+				out var parsedDateTime))
+		{
+			return false;
+		}
+
+		hour = parsedDateTime.Hour;
+		return true;
 	}
 
 	private static string FormatEndHourOption(int absoluteHour)
 	{
 		var hour = absoluteHour % 24;
 		var isNextDay = absoluteHour >= 24;
-		return isNextDay ? $"{hour:00}:00 (+1d)" : $"{hour:00}:00";
+		var hourLabel = FormatHourLabel(hour);
+		return isNextDay ? $"{hourLabel} (+1d)" : hourLabel;
 	}
 
 	private static string FormatReservationTimeRange(int startHour, int durationHours)
@@ -1773,7 +1796,14 @@ public partial class MainWindow : Window
 		var endAbsoluteHour = startHour + durationHours;
 		var endHour = endAbsoluteHour % 24;
 		var suffix = endAbsoluteHour >= 24 ? " (+1d)" : string.Empty;
-		return $"{startHour:00}:00-{endHour:00}:00{suffix}";
+		return $"{FormatHourLabel(startHour)}-{FormatHourLabel(endHour)}{suffix}";
+	}
+
+	private static string FormatHourLabel(int hour)
+	{
+		return DateTime.Today
+			.AddHours(hour % 24)
+			.ToString("h:mm tt", CultureInfo.InvariantCulture);
 	}
 
 	private DateOnly GetSelectedDate()
