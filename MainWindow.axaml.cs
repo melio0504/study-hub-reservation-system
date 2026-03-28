@@ -19,10 +19,9 @@ public partial class MainWindow : Window
 	private const double CanvasBottomScrollBuffer = 56;
 	private const double MinSeatPlanFitScale = 0.65;
 	private const double MaxSeatPlanFitScale = 1.08;
-	private const int OpeningHour = 8;
-	private const int LastStartHour = 20;
-	private const int ClosingHour = 22;
-	private const int MaxReservationHours = 12;
+	private const int WeekdayOpeningHour = 13;
+	private const int WeekendOpeningHour = 8;
+	private const int ClosingHourNextDayAbsolute = 29;
 	private const int MaxSelectableSeats = 5;
 	private const decimal UsdToPhpRate = 56m;
 
@@ -96,14 +95,8 @@ public partial class MainWindow : Window
 	private void InitializeReservationInputs()
 	{
 		ReservationDatePicker.SelectedDate = DateTimeOffset.Now.Date;
-
-		StartHourComboBox.ItemsSource = Enumerable.Range(OpeningHour, (LastStartHour - OpeningHour) + 1)
-			.Select(hour => $"{hour:00}:00")
-			.ToList();
-		StartHourComboBox.SelectedIndex = 0;
-
+		UpdateStartHourOptions();
 		UpdateEndTimeOptions();
-
 	}
 
 	private void BuildSeatGrid()
@@ -446,6 +439,8 @@ public partial class MainWindow : Window
 
 	private void ReservationDatePicker_SelectedDateChanged(object? sender, DatePickerSelectedValueChangedEventArgs e)
 	{
+		UpdateStartHourOptions();
+		UpdateEndTimeOptions();
 		RefreshReservationViews();
 	}
 
@@ -585,7 +580,7 @@ public partial class MainWindow : Window
 			.OrderBy(r => r.SeatId)
 			.ThenBy(r => r.StartHour)
 			.Select(r =>
-				$"Seat {r.SeatId} | {r.StartHour:00}:00-{r.StartHour + r.DurationHours:00}:00 | {r.Username} | {r.PaymentMethod} | PHP {r.TotalCost:F2}")
+				$"Seat {r.SeatId} | {FormatReservationTimeRange(r.StartHour, r.DurationHours)} | {r.Username} | {r.PaymentMethod} | PHP {r.TotalCost:F2}")
 			.ToList();
 
 		ReservationsListBox.ItemsSource = items.Any()
@@ -636,8 +631,7 @@ public partial class MainWindow : Window
 
 	private static string FormatUserBookingItem(Reservation reservation)
 	{
-		var endHour = reservation.StartHour + reservation.DurationHours;
-		return $"{reservation.ReservationDate:MMM dd, yyyy} | {reservation.StartHour:00}:00-{endHour:00}:00 | Seat {reservation.SeatId} | {reservation.PaymentMethod} | PHP {reservation.TotalCost:F2}";
+		return $"{reservation.ReservationDate:MMM dd, yyyy} | {FormatReservationTimeRange(reservation.StartHour, reservation.DurationHours)} | Seat {reservation.SeatId} | {reservation.PaymentMethod} | PHP {reservation.TotalCost:F2}";
 	}
 
 	private static DateTime GetReservationEndDateTime(Reservation reservation)
@@ -789,14 +783,9 @@ public partial class MainWindow : Window
 
 		var startHourComboBox = new ComboBox
 		{
-			ItemsSource = Enumerable.Range(OpeningHour, (LastStartHour - OpeningHour) + 1)
-				.Select(hour => $"{hour:00}:00")
-				.ToList(),
 			Width = 420,
 			FontSize = 17
 		};
-
-		startHourComboBox.SelectedItem = $"{reservation.StartHour:00}:00";
 
 		var endHourComboBox = new ComboBox
 		{
@@ -807,20 +796,20 @@ public partial class MainWindow : Window
 		void RefreshEndHourOptions()
 		{
 			if (startHourComboBox.SelectedItem is not string startText
-				|| !int.TryParse(startText[..2], out var selectedStartHour))
+				|| !TryParseHourValue(startText, out var selectedStartHour))
 			{
 				endHourComboBox.ItemsSource = new List<string>();
 				endHourComboBox.SelectedItem = null;
 				return;
 			}
 
-			var latestEndHour = Math.Min(selectedStartHour + MaxReservationHours, ClosingHour);
-			var options = Enumerable.Range(selectedStartHour + 1, latestEndHour - selectedStartHour)
-				.Select(hour => $"{hour:00}:00")
+			var (_, closingHourAbsolute) = GetOperatingWindow(DateOnly.FromDateTime(datePicker.SelectedDate?.DateTime.Date ?? DateTime.Today));
+			var options = Enumerable.Range(selectedStartHour + 1, closingHourAbsolute - selectedStartHour)
+				.Select(FormatEndHourOption)
 				.ToList();
 
 			var preferredEndHour = selectedStartHour + reservation.DurationHours;
-			var preferredSelection = $"{Math.Min(preferredEndHour, latestEndHour):00}:00";
+			var preferredSelection = FormatEndHourOption(Math.Min(preferredEndHour, closingHourAbsolute));
 
 			endHourComboBox.ItemsSource = options;
 			endHourComboBox.SelectedItem = options.Contains(preferredSelection)
@@ -828,8 +817,29 @@ public partial class MainWindow : Window
 				: options.FirstOrDefault();
 		}
 
+		void RefreshStartHourOptions()
+		{
+			var selectedDate = DateOnly.FromDateTime(datePicker.SelectedDate?.DateTime.Date ?? DateTime.Today);
+			var (openingHour, _) = GetOperatingWindow(selectedDate);
+			var options = Enumerable.Range(openingHour, 24 - openingHour)
+				.Select(hour => $"{hour:00}:00")
+				.ToList();
+
+			var preferredStart = $"{reservation.StartHour:00}:00";
+			startHourComboBox.ItemsSource = options;
+			startHourComboBox.SelectedItem = options.Contains(preferredStart)
+				? preferredStart
+				: options.FirstOrDefault();
+		}
+
+		RefreshStartHourOptions();
 		RefreshEndHourOptions();
 		startHourComboBox.SelectionChanged += (_, _) => RefreshEndHourOptions();
+		datePicker.SelectedDateChanged += (_, _) =>
+		{
+			RefreshStartHourOptions();
+			RefreshEndHourOptions();
+		};
 
 		var errorTextBlock = new TextBlock
 		{
@@ -868,7 +878,7 @@ public partial class MainWindow : Window
 					{
 						new TextBlock
 						{
-							Text = $"Seat {reservation.SeatId} | Current: {reservation.ReservationDate:MMM dd, yyyy} {reservation.StartHour:00}:00-{reservation.StartHour + reservation.DurationHours:00}:00",
+							Text = $"Seat {reservation.SeatId} | Current: {reservation.ReservationDate:MMM dd, yyyy} {FormatReservationTimeRange(reservation.StartHour, reservation.DurationHours)}",
 							FontWeight = FontWeight.SemiBold,
 							TextWrapping = TextWrapping.Wrap,
 							FontSize = 19
@@ -919,21 +929,26 @@ public partial class MainWindow : Window
 				return;
 			}
 
-			if (!int.TryParse(startText[..2], out var selectedStartHour)
-				|| !int.TryParse(endText[..2], out var selectedEndHour))
+			if (!TryParseHourValue(startText, out var selectedStartHour)
+				|| !TryParseHourValue(endText, out var selectedEndHour))
 			{
 				errorTextBlock.Text = "Unable to parse selected times.";
 				return;
 			}
 
 			var selectedDuration = selectedEndHour - selectedStartHour;
-			if (selectedDuration < 1 || selectedDuration > MaxReservationHours)
+			if (selectedDuration <= 0)
 			{
-				errorTextBlock.Text = $"Duration must be between 1 and {MaxReservationHours} hours.";
-				return;
+				selectedDuration += 24;
 			}
 
 			var selectedDate = DateOnly.FromDateTime(datePicker.SelectedDate.Value.DateTime.Date);
+			if (!IsReservationSlotValid(selectedDate, selectedStartHour, selectedDuration, out var validationMessage))
+			{
+				errorTextBlock.Text = validationMessage;
+				return;
+			}
+
 			if (!completionSource.Task.IsCompleted)
 			{
 				completionSource.SetResult(new RescheduleDetails(selectedDate, selectedStartHour, selectedDuration));
@@ -1057,7 +1072,8 @@ public partial class MainWindow : Window
 		}
 
 		var date = GetSelectedDate();
-		var hasSlot = TryGetSelectedReservationSlot(out _, out var startHour, out var endHour, out var durationHours);
+		var hasSlot = TryGetSelectedReservationSlot(out _, out var startHour, out _, out var durationHours);
+		var timeRange = FormatReservationTimeRange(startHour, durationHours);
 		var hourlyRates = selectedSeatIds.Select(GetSeatRate).ToList();
 		var minRate = hourlyRates.Min();
 		var maxRate = hourlyRates.Max();
@@ -1068,7 +1084,7 @@ public partial class MainWindow : Window
 			? $"PHP {minRate:F2}/hour per seat"
 			: $"PHP {minRate:F2} - PHP {maxRate:F2}/hour per seat";
 		CostSummaryTextBlock.Text = hasSlot
-			? $"{selectedSeatIds.Count} seat(s) | {startHour:00}:00-{endHour:00}:00 ({durationHours} hour(s)) {(isWeekend ? "+ weekend surcharge" : string.Empty)} | Total PHP {total:F2}"
+			? $"{selectedSeatIds.Count} seat(s) | {timeRange} ({durationHours} hour(s)) {(isWeekend ? "+ weekend surcharge" : string.Empty)} | Total PHP {total:F2}"
 			: "Choose a valid date and time to calculate cost.";
 
 		var reservations = _dataStore.GetReservationsForDate(date);
@@ -1377,8 +1393,9 @@ public partial class MainWindow : Window
 	private bool TryGetSelectedReservationSlot(out DateOnly date, out int startHour, out int endHour, out int durationHours)
 	{
 		date = GetSelectedDate();
-		startHour = OpeningHour;
-		endHour = OpeningHour + 1;
+		var (openingHour, _) = GetOperatingWindow(date);
+		startHour = openingHour;
+		endHour = (openingHour + 1) % 24;
 		durationHours = 1;
 
 		if (StartHourComboBox.SelectedItem is not string startText
@@ -1387,19 +1404,23 @@ public partial class MainWindow : Window
 			return false;
 		}
 
-		if (!int.TryParse(startText[..2], out startHour))
+		if (!TryParseHourValue(startText, out startHour))
 		{
 			return false;
 		}
 
-		if (!int.TryParse(endText[..2], out endHour))
+		if (!TryParseHourValue(endText, out endHour))
 		{
 			return false;
 		}
 
 		durationHours = endHour - startHour;
+		if (durationHours <= 0)
+		{
+			durationHours += 24;
+		}
 
-		if (durationHours < 1 || durationHours > MaxReservationHours)
+		if (!IsReservationSlotValid(date, startHour, durationHours, out _))
 		{
 			return false;
 		}
@@ -1407,18 +1428,39 @@ public partial class MainWindow : Window
 		return true;
 	}
 
+	private void UpdateStartHourOptions()
+	{
+		var date = GetSelectedDate();
+		var (openingHour, _) = GetOperatingWindow(date);
+		var options = Enumerable.Range(openingHour, 24 - openingHour)
+			.Select(hour => $"{hour:00}:00")
+			.ToList();
+
+		var previousSelection = StartHourComboBox.SelectedItem as string;
+		StartHourComboBox.ItemsSource = options;
+
+		if (previousSelection is not null && options.Contains(previousSelection))
+		{
+			StartHourComboBox.SelectedItem = previousSelection;
+		}
+		else
+		{
+			StartHourComboBox.SelectedIndex = 0;
+		}
+	}
+
 	private void UpdateEndTimeOptions()
 	{
 		if (StartHourComboBox.SelectedItem is not string startText
-			|| !int.TryParse(startText[..2], out var startHour))
+			|| !TryParseHourValue(startText, out var startHour))
 		{
 			EndHourComboBox.ItemsSource = new List<string>();
 			return;
 		}
 
-		var latestEndHour = Math.Min(startHour + MaxReservationHours, ClosingHour);
-		var options = Enumerable.Range(startHour + 1, latestEndHour - startHour)
-			.Select(hour => $"{hour:00}:00")
+		var (_, closingHourAbsolute) = GetOperatingWindow(GetSelectedDate());
+		var options = Enumerable.Range(startHour + 1, closingHourAbsolute - startHour)
+			.Select(FormatEndHourOption)
 			.ToList();
 
 		var previousSelection = EndHourComboBox.SelectedItem as string;
@@ -1432,6 +1474,83 @@ public partial class MainWindow : Window
 		{
 			EndHourComboBox.SelectedIndex = 0;
 		}
+	}
+
+	private static (int OpeningHour, int ClosingHourAbsolute) GetOperatingWindow(DateOnly date)
+	{
+		var openingHour = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+			? WeekendOpeningHour
+			: WeekdayOpeningHour;
+
+		return (openingHour, ClosingHourNextDayAbsolute);
+	}
+
+	private static bool IsReservationSlotValid(DateOnly date, int startHour, int durationHours, out string errorMessage)
+	{
+		errorMessage = string.Empty;
+
+		if (startHour is < 0 or > 23)
+		{
+			errorMessage = "Start time must be between 00:00 and 23:00.";
+			return false;
+		}
+
+		if (durationHours < 1)
+		{
+			errorMessage = "Reservation must be at least 1 hour.";
+			return false;
+		}
+
+		var (openingHour, closingHourAbsolute) = GetOperatingWindow(date);
+		if (startHour < openingHour)
+		{
+			errorMessage = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+				? "Weekend bookings can start from 08:00 onward."
+				: "Weekday bookings can start from 13:00 onward.";
+			return false;
+		}
+
+		if ((startHour + durationHours) > closingHourAbsolute)
+		{
+			errorMessage = "Selected end time exceeds the 05:00 closing time.";
+			return false;
+		}
+
+		var startDateTime = date.ToDateTime(new TimeOnly(startHour, 0));
+		if (startDateTime < DateTime.Now)
+		{
+			errorMessage = "Selected reservation start time is in the past.";
+			return false;
+		}
+
+		return true;
+	}
+
+	private static bool TryParseHourValue(string hourText, out int hour)
+	{
+		hour = 0;
+
+		if (string.IsNullOrWhiteSpace(hourText) || hourText.Length < 2)
+		{
+			return false;
+		}
+
+		return int.TryParse(hourText[..2], out hour);
+	}
+
+	private static string FormatEndHourOption(int absoluteHour)
+	{
+		var hour = absoluteHour % 24;
+		var isNextDay = absoluteHour >= 24;
+		return isNextDay ? $"{hour:00}:00 (+1d)" : $"{hour:00}:00";
+	}
+
+	private static string FormatReservationTimeRange(int startHour, int durationHours)
+	{
+		var endAbsoluteHour = startHour + durationHours;
+		var endHour = endAbsoluteHour % 24;
+		var suffix = endAbsoluteHour >= 24 ? " (+1d)" : string.Empty;
+		return $"{startHour:00}:00-{endHour:00}:00{suffix}";
 	}
 
 	private DateOnly GetSelectedDate()
