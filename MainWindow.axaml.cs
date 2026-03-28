@@ -600,6 +600,8 @@ public partial class MainWindow : Window
 			var signedOutMessage = new List<string> { "Log in to view your bookings." };
 			MyUpcomingBookingsListBox.ItemsSource = signedOutMessage;
 			MyPastBookingsListBox.ItemsSource = signedOutMessage;
+			MyUpcomingBookingsListBox.SelectedItem = null;
+			MyPastBookingsListBox.SelectedItem = null;
 			return;
 		}
 
@@ -610,14 +612,14 @@ public partial class MainWindow : Window
 			.Where(reservation => GetReservationEndDateTime(reservation) > now)
 			.OrderBy(reservation => reservation.ReservationDate)
 			.ThenBy(reservation => reservation.StartHour)
-			.Select(FormatUserBookingItem)
+			.Select(reservation => new UserBookingListItem(reservation, FormatUserBookingItem(reservation)))
 			.ToList();
 
 		var pastItems = userReservations
 			.Where(reservation => GetReservationEndDateTime(reservation) <= now)
 			.OrderByDescending(reservation => reservation.ReservationDate)
 			.ThenByDescending(reservation => reservation.StartHour)
-			.Select(FormatUserBookingItem)
+			.Select(reservation => new UserBookingListItem(reservation, FormatUserBookingItem(reservation)))
 			.ToList();
 
 		MyUpcomingBookingsListBox.ItemsSource = upcomingItems.Any()
@@ -627,6 +629,9 @@ public partial class MainWindow : Window
 		MyPastBookingsListBox.ItemsSource = pastItems.Any()
 			? pastItems
 			: new List<string> { "No past bookings yet." };
+
+		MyUpcomingBookingsListBox.SelectedItem = null;
+		MyPastBookingsListBox.SelectedItem = null;
 	}
 
 	private static string FormatUserBookingItem(Reservation reservation)
@@ -639,6 +644,400 @@ public partial class MainWindow : Window
 	{
 		var startDateTime = reservation.ReservationDate.ToDateTime(new TimeOnly(reservation.StartHour, 0));
 		return startDateTime.AddHours(reservation.DurationHours);
+	}
+
+	private void MyBookingsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+	{
+		if (sender == MyUpcomingBookingsListBox && MyUpcomingBookingsListBox.SelectedItem is not null)
+		{
+			MyPastBookingsListBox.SelectedItem = null;
+		}
+
+		if (sender == MyPastBookingsListBox && MyPastBookingsListBox.SelectedItem is not null)
+		{
+			MyUpcomingBookingsListBox.SelectedItem = null;
+		}
+	}
+
+	private async void CancelBookingButton_Click(object? sender, RoutedEventArgs e)
+	{
+		if (!TryGetSelectedUserBooking(out var selectedBooking))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Select one booking from My Upcoming Bookings or My Past Bookings first.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_currentUser))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Please log in first.";
+			return;
+		}
+
+		if (GetReservationEndDateTime(selectedBooking.Reservation) <= DateTime.Now)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Only upcoming bookings can be canceled.";
+			return;
+		}
+
+		var confirmed = await ShowConfirmationDialogAsync(
+			"Confirm Cancellation",
+			$"Cancel Seat {selectedBooking.Reservation.SeatId} on {selectedBooking.Reservation.ReservationDate:MMMM dd, yyyy} at {selectedBooking.Reservation.StartHour:00}:00?");
+
+		if (!confirmed)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Cancellation was not completed.";
+			return;
+		}
+
+		if (!_dataStore.TryCancelReservation(selectedBooking.Reservation.ReservationId, _currentUser, out var errorMessage))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = errorMessage;
+			return;
+		}
+
+		SeatStatusTextBlock.Foreground = SuccessBrush;
+		SeatStatusTextBlock.Text = $"Booking canceled for Seat {selectedBooking.Reservation.SeatId}.";
+		RefreshReservationViews();
+	}
+
+	private async void RescheduleBookingButton_Click(object? sender, RoutedEventArgs e)
+	{
+		if (!TryGetSelectedUserBooking(out var selectedBooking))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Select one booking from My Upcoming Bookings or My Past Bookings first.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_currentUser))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Please log in first.";
+			return;
+		}
+
+		if (GetReservationEndDateTime(selectedBooking.Reservation) <= DateTime.Now)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Past bookings cannot be rescheduled.";
+			return;
+		}
+
+		var rescheduleDetails = await ShowRescheduleDialogAsync(selectedBooking.Reservation);
+		if (rescheduleDetails is null)
+		{
+			return;
+		}
+
+		var recalculatedTotal = CalculateTotalCost(
+			selectedBooking.Reservation.HourlyRate,
+			rescheduleDetails.DurationHours,
+			rescheduleDetails.Date);
+
+		if (!_dataStore.TryRescheduleReservation(
+				selectedBooking.Reservation.ReservationId,
+				_currentUser,
+				rescheduleDetails.Date,
+				rescheduleDetails.StartHour,
+				rescheduleDetails.DurationHours,
+				recalculatedTotal,
+				out var errorMessage))
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = errorMessage;
+			RefreshReservationViews();
+			return;
+		}
+
+		SeatStatusTextBlock.Foreground = SuccessBrush;
+		SeatStatusTextBlock.Text =
+			$"Booking rescheduled: Seat {selectedBooking.Reservation.SeatId} on {rescheduleDetails.Date:MMMM dd, yyyy} at {rescheduleDetails.StartHour:00}:00.";
+		RefreshReservationViews();
+	}
+
+	private bool TryGetSelectedUserBooking(out UserBookingListItem selectedBooking)
+	{
+		if (MyUpcomingBookingsListBox.SelectedItem is UserBookingListItem upcoming)
+		{
+			selectedBooking = upcoming;
+			return true;
+		}
+
+		if (MyPastBookingsListBox.SelectedItem is UserBookingListItem past)
+		{
+			selectedBooking = past;
+			return true;
+		}
+
+		selectedBooking = null!;
+		return false;
+	}
+
+	private async Task<RescheduleDetails?> ShowRescheduleDialogAsync(Reservation reservation)
+	{
+		var datePicker = new DatePicker
+		{
+			SelectedDate = reservation.ReservationDate.ToDateTime(TimeOnly.MinValue),
+			Width = 420,
+			FontSize = 17
+		};
+
+		var startHourComboBox = new ComboBox
+		{
+			ItemsSource = Enumerable.Range(OpeningHour, (LastStartHour - OpeningHour) + 1)
+				.Select(hour => $"{hour:00}:00")
+				.ToList(),
+			Width = 420,
+			FontSize = 17
+		};
+
+		startHourComboBox.SelectedItem = $"{reservation.StartHour:00}:00";
+
+		var endHourComboBox = new ComboBox
+		{
+			Width = 420,
+			FontSize = 17
+		};
+
+		void RefreshEndHourOptions()
+		{
+			if (startHourComboBox.SelectedItem is not string startText
+				|| !int.TryParse(startText[..2], out var selectedStartHour))
+			{
+				endHourComboBox.ItemsSource = new List<string>();
+				endHourComboBox.SelectedItem = null;
+				return;
+			}
+
+			var latestEndHour = Math.Min(selectedStartHour + MaxReservationHours, ClosingHour);
+			var options = Enumerable.Range(selectedStartHour + 1, latestEndHour - selectedStartHour)
+				.Select(hour => $"{hour:00}:00")
+				.ToList();
+
+			var preferredEndHour = selectedStartHour + reservation.DurationHours;
+			var preferredSelection = $"{Math.Min(preferredEndHour, latestEndHour):00}:00";
+
+			endHourComboBox.ItemsSource = options;
+			endHourComboBox.SelectedItem = options.Contains(preferredSelection)
+				? preferredSelection
+				: options.FirstOrDefault();
+		}
+
+		RefreshEndHourOptions();
+		startHourComboBox.SelectionChanged += (_, _) => RefreshEndHourOptions();
+
+		var errorTextBlock = new TextBlock
+		{
+			Foreground = ErrorBrush,
+			TextWrapping = TextWrapping.Wrap,
+			Width = 500,
+			FontSize = 16
+		};
+
+		var saveButton = new Button
+		{
+			Content = "Save Changes",
+			Classes = { "primary" }
+		};
+
+		var cancelButton = new Button
+		{
+			Content = "Cancel",
+			Classes = { "secondary" }
+		};
+
+		var dialog = new Window
+		{
+			Title = "Reschedule Booking",
+			Width = 680,
+			Height = 560,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+			Content = new Border
+			{
+				Padding = new Thickness(30),
+				Child = new StackPanel
+				{
+					Spacing = 12,
+					Children =
+					{
+						new TextBlock
+						{
+							Text = $"Seat {reservation.SeatId} | Current: {reservation.ReservationDate:MMM dd, yyyy} {reservation.StartHour:00}:00-{reservation.StartHour + reservation.DurationHours:00}:00",
+							FontWeight = FontWeight.SemiBold,
+							TextWrapping = TextWrapping.Wrap,
+							FontSize = 19
+						},
+						new TextBlock { Text = "New Date", FontSize = 17, FontWeight = FontWeight.SemiBold },
+						datePicker,
+						new TextBlock { Text = "New Start Time", FontSize = 17, FontWeight = FontWeight.SemiBold },
+						startHourComboBox,
+						new TextBlock { Text = "New End Time", FontSize = 17, FontWeight = FontWeight.SemiBold },
+						endHourComboBox,
+						errorTextBlock,
+						new StackPanel
+						{
+							Orientation = Avalonia.Layout.Orientation.Horizontal,
+							Spacing = 10,
+							HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+							Children = { cancelButton, saveButton }
+						}
+					}
+				}
+			}
+		};
+
+		var completionSource = new TaskCompletionSource<RescheduleDetails?>();
+
+		cancelButton.Click += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(null);
+			}
+
+			dialog.Close();
+		};
+
+		saveButton.Click += (_, _) =>
+		{
+			if (datePicker.SelectedDate is null)
+			{
+				errorTextBlock.Text = "Please choose a date.";
+				return;
+			}
+
+			if (startHourComboBox.SelectedItem is not string startText
+				|| endHourComboBox.SelectedItem is not string endText)
+			{
+				errorTextBlock.Text = "Please choose valid start and end time values.";
+				return;
+			}
+
+			if (!int.TryParse(startText[..2], out var selectedStartHour)
+				|| !int.TryParse(endText[..2], out var selectedEndHour))
+			{
+				errorTextBlock.Text = "Unable to parse selected times.";
+				return;
+			}
+
+			var selectedDuration = selectedEndHour - selectedStartHour;
+			if (selectedDuration < 1 || selectedDuration > MaxReservationHours)
+			{
+				errorTextBlock.Text = $"Duration must be between 1 and {MaxReservationHours} hours.";
+				return;
+			}
+
+			var selectedDate = DateOnly.FromDateTime(datePicker.SelectedDate.Value.DateTime.Date);
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(new RescheduleDetails(selectedDate, selectedStartHour, selectedDuration));
+			}
+
+			dialog.Close();
+		};
+
+		dialog.Closed += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(null);
+			}
+		};
+
+		await dialog.ShowDialog(this);
+		return await completionSource.Task;
+	}
+
+	private async Task<bool> ShowConfirmationDialogAsync(string title, string message)
+	{
+		var yesButton = new Button
+		{
+			Content = "Yes, Cancel",
+			Classes = { "primary" },
+			FontSize = 16,
+			Padding = new Thickness(18, 12)
+		};
+
+		var noButton = new Button
+		{
+			Content = "No",
+			Classes = { "secondary" },
+			FontSize = 16,
+			Padding = new Thickness(18, 12)
+		};
+
+		var dialog = new Window
+		{
+			Title = title,
+			Width = 500,
+			Height = 260,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+			Content = new Border
+			{
+				Padding = new Thickness(22),
+				Child = new StackPanel
+				{
+					Spacing = 14,
+					Children =
+					{
+						new TextBlock
+						{
+							Text = message,
+							TextWrapping = TextWrapping.Wrap,
+							FontSize = 20,
+							FontWeight = FontWeight.SemiBold
+						},
+						new StackPanel
+						{
+							Orientation = Avalonia.Layout.Orientation.Horizontal,
+							Spacing = 10,
+							HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+							Children = { noButton, yesButton }
+						}
+					}
+				}
+			}
+		};
+
+		var completionSource = new TaskCompletionSource<bool>();
+
+		noButton.Click += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(false);
+			}
+
+			dialog.Close();
+		};
+
+		yesButton.Click += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(true);
+			}
+
+			dialog.Close();
+		};
+
+		dialog.Closed += (_, _) =>
+		{
+			if (!completionSource.Task.IsCompleted)
+			{
+				completionSource.SetResult(false);
+			}
+		};
+
+		await dialog.ShowDialog(this);
+		return await completionSource.Task;
 	}
 
 	private void UpdateDetailPanel()
@@ -956,6 +1355,24 @@ public partial class MainWindow : Window
 	}
 
 	private sealed record PaymentDetails(string Method, string AccountName, string AccountNumber, string SecondaryDetail);
+	private sealed record RescheduleDetails(DateOnly Date, int StartHour, int DurationHours);
+
+	private sealed class UserBookingListItem
+	{
+		public UserBookingListItem(Reservation reservation, string displayText)
+		{
+			Reservation = reservation;
+			DisplayText = displayText;
+		}
+
+		public Reservation Reservation { get; }
+		public string DisplayText { get; }
+
+		public override string ToString()
+		{
+			return DisplayText;
+		}
+	}
 
 	private bool TryGetSelectedReservationSlot(out DateOnly date, out int startHour, out int endHour, out int durationHours)
 	{
