@@ -5,6 +5,7 @@ namespace study_hub_reservation_system.Models;
 public class Reservation
 {
     public required string ReservationId { get; set; }
+    public string BookingCode { get; set; } = string.Empty;
     public required string Username { get; set; }
     public required string SeatId { get; set; }
     public required DateOnly ReservationDate { get; set; }
