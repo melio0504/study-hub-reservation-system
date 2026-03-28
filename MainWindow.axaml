@@ -306,9 +306,10 @@
                                                    Foreground="#6E6E73"
                                                    FontSize="15" />
                                         <Button Name="ReceiptExportButton"
-                                                Content="Export Receipt (Coming Soon)"
+                                            Content="Export Receipt to PDF"
                                                 Classes="secondary"
-                                                IsEnabled="False"
+                                            IsEnabled="False"
+                                            Click="ReceiptExportButton_Click"
                                                 HorizontalAlignment="Left" />
                                     </StackPanel>
                                 </Border>
