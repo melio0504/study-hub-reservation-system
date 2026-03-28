@@ -102,6 +102,21 @@ public class AppDataStore
             .ToList();
     }
 
+    public IReadOnlyList<Reservation> GetReservationsForUser(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Array.Empty<Reservation>();
+        }
+
+        return LoadReservations()
+            .Where(r => string.Equals(r.Username, username, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(r => r.ReservationDate)
+            .ThenBy(r => r.StartHour)
+            .ThenBy(r => r.SeatId)
+            .ToList();
+    }
+
     public bool TryCreateReservation(Reservation newReservation, out string errorMessage)
     {
         errorMessage = string.Empty;
