@@ -39,6 +39,7 @@ public partial class MainWindow : Window
 	private static readonly IBrush SelectedSeatTextBrush = Brushes.White;
 
 	private string? _currentUser;
+	private ReceiptSnapshot? _latestReceipt;
 	private readonly HashSet<string> _selectedSeats = new(StringComparer.OrdinalIgnoreCase);
 
 	public MainWindow()
@@ -347,6 +348,7 @@ public partial class MainWindow : Window
 	private void LogoutButton_Click(object? sender, RoutedEventArgs e)
 	{
 		_currentUser = null;
+		_latestReceipt = null;
 		_selectedSeats.Clear();
 
 		AuthPanel.IsVisible = true;
@@ -363,6 +365,7 @@ public partial class MainWindow : Window
 		AuthPanel.IsVisible = false;
 		BookingPanel.IsVisible = true;
 
+		_latestReceipt = null;
 		_selectedSeats.Clear();
 		RefreshReservationViews();
 	}
@@ -489,6 +492,7 @@ public partial class MainWindow : Window
 		}
 
 		var selectedSeatIds = _selectedSeats.OrderBy(seatId => seatId).ToList();
+		var bookingCode = GenerateBookingCode(date);
 		var totalCost = selectedSeatIds.Sum(seatId =>
 		{
 			var rate = GetSeatRate(seatId);
@@ -509,6 +513,7 @@ public partial class MainWindow : Window
 			var reservation = new Reservation
 			{
 				ReservationId = Guid.NewGuid().ToString("N"),
+				BookingCode = bookingCode,
 				Username = _currentUser,
 				SeatId = seatId,
 				ReservationDate = date,
@@ -531,12 +536,21 @@ public partial class MainWindow : Window
 
 		SeatStatusTextBlock.Foreground = SuccessBrush;
 		SeatStatusTextBlock.Text = $"Reservation confirmed for {selectedSeatIds.Count} seat(s) on {date:MMMM dd, yyyy}.";
+		_latestReceipt = new ReceiptSnapshot(
+			bookingCode,
+			date,
+			startHour,
+			durationHours,
+			selectedSeatIds,
+			paymentDetails.Method,
+			totalCost,
+			DateTime.Now);
 		_selectedSeats.Clear();
 		RefreshReservationViews();
 
 		await ShowInfoDialogAsync(
 			"Reservation Successful",
-			"Reserved Successfully. Please check your email for receipt.");
+			$"Reserved successfully. Your booking code is {bookingCode}.");
 	}
 
 	private void RefreshReservationViews()
@@ -548,6 +562,7 @@ public partial class MainWindow : Window
 		UpdateReservationList(reservations);
 		UpdateMyBookingLists();
 		UpdateDetailPanel();
+		UpdateReceiptPanel();
 	}
 
 	private void UpdateSeatButtons(IReadOnlyList<Reservation> dayReservations)
@@ -580,12 +595,44 @@ public partial class MainWindow : Window
 			.OrderBy(r => r.SeatId)
 			.ThenBy(r => r.StartHour)
 			.Select(r =>
-				$"Seat {r.SeatId} | {FormatReservationTimeRange(r.StartHour, r.DurationHours)} | {r.Username} | {r.PaymentMethod} | PHP {r.TotalCost:F2}")
+				$"{(string.IsNullOrWhiteSpace(r.BookingCode) ? "-" : r.BookingCode)} | Seat {r.SeatId} | {FormatReservationTimeRange(r.StartHour, r.DurationHours)} | {r.Username} | {r.PaymentMethod} | PHP {r.TotalCost:F2}")
 			.ToList();
 
 		ReservationsListBox.ItemsSource = items.Any()
 			? items
 			: new List<string> { "No reservations yet for this date." };
+	}
+
+	private void UpdateReceiptPanel()
+	{
+		if (_latestReceipt is null)
+		{
+			ReceiptPanel.IsVisible = false;
+			BookingCodeTextBlock.Text = string.Empty;
+			ReceiptSummaryTextBlock.Text = string.Empty;
+			ReceiptGeneratedOnTextBlock.Text = string.Empty;
+			return;
+		}
+
+		ReceiptPanel.IsVisible = true;
+		BookingCodeTextBlock.Text = $"Booking Reference: {_latestReceipt.BookingCode}";
+		ReceiptSummaryTextBlock.Text = BuildReceiptSummary(_latestReceipt);
+		ReceiptGeneratedOnTextBlock.Text = $"Paid on {_latestReceipt.PaidAt:MMM dd, yyyy hh:mm tt}";
+	}
+
+	private static string BuildReceiptSummary(ReceiptSnapshot receipt)
+	{
+		return $"Seats: {string.Join(", ", receipt.SeatIds)}\n"
+			+ $"Date: {receipt.Date:MMMM dd, yyyy}\n"
+			+ $"Time: {FormatReservationTimeRange(receipt.StartHour, receipt.DurationHours)}\n"
+			+ $"Payment: {receipt.PaymentMethod}\n"
+			+ $"Total Paid: PHP {receipt.TotalPaid:F2}";
+	}
+
+	private static string GenerateBookingCode(DateOnly date)
+	{
+		var token = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
+		return $"JIT-{date:yyyyMMdd}-{token}";
 	}
 
 	private void UpdateMyBookingLists()
@@ -631,7 +678,8 @@ public partial class MainWindow : Window
 
 	private static string FormatUserBookingItem(Reservation reservation)
 	{
-		return $"{reservation.ReservationDate:MMM dd, yyyy} | {FormatReservationTimeRange(reservation.StartHour, reservation.DurationHours)} | Seat {reservation.SeatId} | {reservation.PaymentMethod} | PHP {reservation.TotalCost:F2}";
+		var bookingCode = string.IsNullOrWhiteSpace(reservation.BookingCode) ? "-" : reservation.BookingCode;
+		return $"{bookingCode} | {reservation.ReservationDate:MMM dd, yyyy} | {FormatReservationTimeRange(reservation.StartHour, reservation.DurationHours)} | Seat {reservation.SeatId} | {reservation.PaymentMethod} | PHP {reservation.TotalCost:F2}";
 	}
 
 	private static DateTime GetReservationEndDateTime(Reservation reservation)
@@ -1369,6 +1417,16 @@ public partial class MainWindow : Window
 
 		await dialog.ShowDialog(this);
 	}
+
+	private sealed record ReceiptSnapshot(
+		string BookingCode,
+		DateOnly Date,
+		int StartHour,
+		int DurationHours,
+		IReadOnlyList<string> SeatIds,
+		string PaymentMethod,
+		decimal TotalPaid,
+		DateTime PaidAt);
 
 	private sealed record PaymentDetails(string Method, string AccountName, string AccountNumber, string SecondaryDetail);
 	private sealed record RescheduleDetails(DateOnly Date, int StartHour, int DurationHours);
