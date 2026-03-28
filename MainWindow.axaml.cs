@@ -661,32 +661,32 @@ public partial class MainWindow : Window
 		{
 			ItemsSource = new List<string> { "Credit Card", "GCash", "Maya" },
 			SelectedIndex = 0,
-			Width = 280
+			Width = 360
 		};
 
 		var accountNameTextBox = new TextBox
 		{
 			Watermark = "Account Name",
-			Width = 280
+			Width = 360
 		};
 
 		var accountNumberTextBox = new TextBox
 		{
 			Watermark = "Card Number (16 digits)",
-			Width = 280
+			Width = 360
 		};
 
 		var secondaryDetailTextBox = new TextBox
 		{
 			Watermark = "CVV (3 digits)",
-			Width = 280
+			Width = 360
 		};
 
 		var errorTextBlock = new TextBlock
 		{
 			Foreground = ErrorBrush,
 			TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-			Width = 280
+			Width = 360
 		};
 
 		paymentMethodComboBox.SelectionChanged += (_, _) =>
@@ -728,16 +728,16 @@ public partial class MainWindow : Window
 		var dialog = new Window
 		{
 			Title = "Payment",
-			Width = 420,
-			Height = 420,
+			Width = 560,
+			Height = 560,
 			CanResize = false,
 			WindowStartupLocation = WindowStartupLocation.CenterOwner,
 			Content = new Border
 			{
-				Padding = new Thickness(20),
+				Padding = new Thickness(28),
 				Child = new StackPanel
 				{
-					Spacing = 10,
+					Spacing = 12,
 					Children =
 					{
 						new TextBlock
