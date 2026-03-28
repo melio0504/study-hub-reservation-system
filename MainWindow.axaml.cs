@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using study_hub_reservation_system.Models;
 using study_hub_reservation_system.Services;
 
@@ -608,6 +611,7 @@ public partial class MainWindow : Window
 		if (_latestReceipt is null)
 		{
 			ReceiptPanel.IsVisible = false;
+			ReceiptExportButton.IsEnabled = false;
 			BookingCodeTextBlock.Text = string.Empty;
 			ReceiptSummaryTextBlock.Text = string.Empty;
 			ReceiptGeneratedOnTextBlock.Text = string.Empty;
@@ -615,9 +619,72 @@ public partial class MainWindow : Window
 		}
 
 		ReceiptPanel.IsVisible = true;
+		ReceiptExportButton.IsEnabled = true;
 		BookingCodeTextBlock.Text = $"Booking Reference: {_latestReceipt.BookingCode}";
 		ReceiptSummaryTextBlock.Text = BuildReceiptSummary(_latestReceipt);
 		ReceiptGeneratedOnTextBlock.Text = $"Paid on {_latestReceipt.PaidAt:MMM dd, yyyy hh:mm tt}";
+	}
+
+	private async void ReceiptExportButton_Click(object? sender, RoutedEventArgs e)
+	{
+		if (_latestReceipt is null)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "No receipt available to export yet.";
+			return;
+		}
+
+		var saveTarget = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+		{
+			Title = "Export Receipt to PDF",
+			SuggestedFileName = $"{_latestReceipt.BookingCode}.pdf",
+			DefaultExtension = "pdf",
+			ShowOverwritePrompt = true,
+			FileTypeChoices = new List<FilePickerFileType>
+			{
+				new("PDF Document")
+				{
+					Patterns = new[] { "*.pdf" },
+					MimeTypes = new[] { "application/pdf" }
+				}
+			}
+		});
+
+		if (saveTarget is null)
+		{
+			return;
+		}
+
+		try
+		{
+			var pdfBytes = BuildReceiptPdf(_latestReceipt, _currentUser ?? "Guest");
+			await using (var output = await saveTarget.OpenWriteAsync())
+			{
+				await output.WriteAsync(pdfBytes, 0, pdfBytes.Length);
+				await output.FlushAsync();
+			}
+
+			var exportedPath = saveTarget.TryGetLocalPath();
+			var savedLocation = string.IsNullOrWhiteSpace(exportedPath)
+				? saveTarget.Name
+				: exportedPath;
+
+			SeatStatusTextBlock.Foreground = SuccessBrush;
+			SeatStatusTextBlock.Text = $"Receipt exported: {saveTarget.Name}";
+
+			await ShowInfoDialogAsync(
+				"Export Complete",
+				$"Receipt PDF saved to:\n{savedLocation}");
+		}
+		catch (Exception ex)
+		{
+			SeatStatusTextBlock.Foreground = ErrorBrush;
+			SeatStatusTextBlock.Text = "Unable to export PDF receipt.";
+
+			await ShowInfoDialogAsync(
+				"Export Failed",
+				$"Failed to export receipt PDF.\n{ex.Message}");
+		}
 	}
 
 	private static string BuildReceiptSummary(ReceiptSnapshot receipt)
@@ -627,6 +694,104 @@ public partial class MainWindow : Window
 			+ $"Time: {FormatReservationTimeRange(receipt.StartHour, receipt.DurationHours)}\n"
 			+ $"Payment: {receipt.PaymentMethod}\n"
 			+ $"Total Paid: PHP {receipt.TotalPaid:F2}";
+	}
+
+	private static byte[] BuildReceiptPdf(ReceiptSnapshot receipt, string username)
+	{
+		var lines = new List<string>
+		{
+			"JIT Study Hub and Coworking Space",
+			"Payment Receipt",
+			string.Empty,
+			$"Booking Reference: {receipt.BookingCode}",
+			$"Customer: {username}",
+			$"Date: {receipt.Date:MMMM dd, yyyy}",
+			$"Time: {FormatReservationTimeRange(receipt.StartHour, receipt.DurationHours)}",
+			$"Seats: {string.Join(", ", receipt.SeatIds)}",
+			$"Payment Method: {receipt.PaymentMethod}",
+			$"Total Paid: PHP {receipt.TotalPaid:F2}",
+			$"Generated: {receipt.PaidAt:MMM dd, yyyy hh:mm tt}"
+		};
+
+		var contentStream = BuildPdfContentStream(lines);
+		var ascii = Encoding.ASCII;
+		var contentLength = ascii.GetByteCount(contentStream);
+
+		var objects = new List<string>
+		{
+			"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+			"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+			"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n",
+			$"4 0 obj\n<< /Length {contentLength} >>\nstream\n{contentStream}endstream\nendobj\n",
+			"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+		};
+
+		using var stream = new MemoryStream();
+
+		void WriteText(string value)
+		{
+			var bytes = ascii.GetBytes(value);
+			stream.Write(bytes, 0, bytes.Length);
+		}
+
+		WriteText("%PDF-1.4\n");
+
+		var offsets = new List<long> { 0 };
+		foreach (var obj in objects)
+		{
+			offsets.Add(stream.Position);
+			WriteText(obj);
+		}
+
+		var xrefOffset = stream.Position;
+		WriteText($"xref\n0 {objects.Count + 1}\n");
+		WriteText("0000000000 65535 f \n");
+
+		for (var i = 1; i < offsets.Count; i++)
+		{
+			WriteText($"{offsets[i]:D10} 00000 n \n");
+		}
+
+		WriteText($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\n");
+		WriteText($"startxref\n{xrefOffset}\n%%EOF");
+
+		return stream.ToArray();
+	}
+
+	private static string BuildPdfContentStream(IReadOnlyList<string> lines)
+	{
+		var builder = new StringBuilder();
+		builder.Append("BT\n");
+		builder.Append("/F1 12 Tf\n");
+		builder.Append("72 760 Td\n");
+
+		for (var index = 0; index < lines.Count; index++)
+		{
+			if (index > 0)
+			{
+				builder.Append("0 -20 Td\n");
+			}
+
+			builder.Append('(');
+			builder.Append(EscapePdfText(lines[index]));
+			builder.Append(") Tj\n");
+		}
+
+		builder.Append("ET\n");
+		return builder.ToString();
+	}
+
+	private static string EscapePdfText(string input)
+	{
+		if (string.IsNullOrEmpty(input))
+		{
+			return string.Empty;
+		}
+
+		return input
+			.Replace("\\", "\\\\", StringComparison.Ordinal)
+			.Replace("(", "\\(", StringComparison.Ordinal)
+			.Replace(")", "\\)", StringComparison.Ordinal);
 	}
 
 	private static string GenerateBookingCode(DateOnly date)
