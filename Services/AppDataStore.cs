@@ -11,6 +11,10 @@ namespace study_hub_reservation_system.Services;
 
 public class AppDataStore
 {
+    private const int WeekdayOpeningHour = 13;
+    private const int WeekendOpeningHour = 8;
+    private const int ClosingHourNextDayAbsolute = 29;
+
     private readonly string _usersPath;
     private readonly string _reservationsPath;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -121,15 +125,21 @@ public class AppDataStore
     {
         errorMessage = string.Empty;
 
+        if (!IsReservationSlotValid(newReservation.ReservationDate, newReservation.StartHour, newReservation.DurationHours, out errorMessage))
+        {
+            return false;
+        }
+
+        if (GetReservationStart(newReservation.ReservationDate, newReservation.StartHour) < DateTime.Now)
+        {
+            errorMessage = "Selected reservation start time is in the past.";
+            return false;
+        }
+
         var reservations = LoadReservations();
         var hasConflict = reservations.Any(existing =>
-            existing.SeatId == newReservation.SeatId
-            && existing.ReservationDate == newReservation.ReservationDate
-            && TimesOverlap(
-                existing.StartHour,
-                existing.DurationHours,
-                newReservation.StartHour,
-                newReservation.DurationHours));
+            string.Equals(existing.SeatId, newReservation.SeatId, StringComparison.OrdinalIgnoreCase)
+            && ReservationsOverlap(existing, newReservation.ReservationDate, newReservation.StartHour, newReservation.DurationHours));
 
         if (hasConflict)
         {
@@ -196,11 +206,21 @@ public class AppDataStore
             return false;
         }
 
+        if (!IsReservationSlotValid(newDate, newStartHour, newDurationHours, out errorMessage))
+        {
+            return false;
+        }
+
+        if (GetReservationStart(newDate, newStartHour) < DateTime.Now)
+        {
+            errorMessage = "Selected reservation start time is in the past.";
+            return false;
+        }
+
         var hasConflict = reservations.Any(existing =>
             !string.Equals(existing.ReservationId, reservation.ReservationId, StringComparison.OrdinalIgnoreCase)
             && string.Equals(existing.SeatId, reservation.SeatId, StringComparison.OrdinalIgnoreCase)
-            && existing.ReservationDate == newDate
-            && TimesOverlap(existing.StartHour, existing.DurationHours, newStartHour, newDurationHours));
+            && ReservationsOverlap(existing, newDate, newStartHour, newDurationHours));
 
         if (hasConflict)
         {
@@ -217,11 +237,56 @@ public class AppDataStore
         return true;
     }
 
-    private static bool TimesOverlap(int startA, int durationA, int startB, int durationB)
+    private static bool ReservationsOverlap(Reservation existing, DateOnly date, int startHour, int durationHours)
     {
-        var endA = startA + durationA;
-        var endB = startB + durationB;
-        return startA < endB && startB < endA;
+        var existingStart = GetReservationStart(existing.ReservationDate, existing.StartHour);
+        var existingEnd = existingStart.AddHours(existing.DurationHours);
+        var candidateStart = GetReservationStart(date, startHour);
+        var candidateEnd = candidateStart.AddHours(durationHours);
+
+        return existingStart < candidateEnd && candidateStart < existingEnd;
+    }
+
+    private static DateTime GetReservationStart(DateOnly date, int startHour)
+    {
+        return date.ToDateTime(new TimeOnly(startHour, 0));
+    }
+
+    private static bool IsReservationSlotValid(DateOnly date, int startHour, int durationHours, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+
+        if (startHour is < 0 or > 23)
+        {
+            errorMessage = "Start time must be between 00:00 and 23:00.";
+            return false;
+        }
+
+        if (durationHours < 1)
+        {
+            errorMessage = "Reservation must be at least 1 hour.";
+            return false;
+        }
+
+        var openingHour = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+            ? WeekendOpeningHour
+            : WeekdayOpeningHour;
+
+        if (startHour < openingHour)
+        {
+            errorMessage = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+                ? "Weekend bookings can start from 08:00 onward."
+                : "Weekday bookings can start from 13:00 onward.";
+            return false;
+        }
+
+        if ((startHour + durationHours) > ClosingHourNextDayAbsolute)
+        {
+            errorMessage = "Selected end time exceeds the 05:00 closing time.";
+            return false;
+        }
+
+        return true;
     }
 
     private List<UserAccount> LoadUsers()
