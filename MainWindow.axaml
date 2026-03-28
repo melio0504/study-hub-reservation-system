@@ -286,7 +286,13 @@
                                         Click="ReserveButton_Click" />
 
                                 <TextBlock Text="Reserved Seats for Selected Date" Classes="label" Margin="0,16,0,6" />
-                                <ListBox Name="ReservationsListBox" Height="220" />
+                                <ListBox Name="ReservationsListBox" Height="150" />
+
+                                <TextBlock Text="My Upcoming Bookings" Classes="label" Margin="0,14,0,6" />
+                                <ListBox Name="MyUpcomingBookingsListBox" Height="130" />
+
+                                <TextBlock Text="My Past Bookings" Classes="label" Margin="0,14,0,6" />
+                                <ListBox Name="MyPastBookingsListBox" Height="130" />
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
